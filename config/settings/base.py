@@ -84,7 +84,9 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
-    "app_cunsole.users",
+    "app_cunsole.users.apps.UsersConfig",
+    "app_cunsole.customer.apps.CustomerConfig",
+    "app_cunsole.invoices.apps.InvoicesConfig"
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -96,7 +98,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 MIGRATION_MODULES = {"sites": "app_cunsole.contrib.sites.migrations"}
 
 # AUTHENTICATION
-# ------------------------------------------------------------------------------
+# ----------------------------------------------`--------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#authentication-backends
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
