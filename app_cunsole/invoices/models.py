@@ -1,27 +1,33 @@
 import uuid
+
 from django.db import models
 
 from app_cunsole.customer.models import Account
 
 
 class Invoices(models.Model):
-    customid = models.CharField(max_length=255,  null=True)
+    customid = models.CharField(max_length=255, null=True)
     externalid = models.CharField(max_length=255, blank=True, null=True)
     issuedat = models.DateTimeField(null=True)
-    duedate = models.DateTimeField( null=True)
+    duedate = models.DateTimeField(null=True)
     name = models.CharField(max_length=255, blank=True, null=True)
-    currency = models.CharField(max_length=3,  null=True)
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2,  null=True)
-    paid_amount = models.DecimalField(max_digits=10, decimal_places=2,  null=True)
+    currency = models.CharField(max_length=3, null=True)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    paid_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     customerid = models.UUIDField()  # Change this to UUIDField to match your database
     # dunningplanid = models.ForeignKey(DunningPlan, on_delete=models.SET_NULL, null=True, blank=True)
     # dunningplanid = models.UUIDField()  # Change this to UUIDField to match your database
-    created_at = models.DateTimeField(auto_now_add=True ,  null=True)
-    updated_at = models.DateTimeField(auto_now=True,null=True )
-    account = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+    account = models.ForeignKey(
+        Account,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
 
     class Meta:
-        db_table = 'invoices'
+        db_table = "invoices"
 
     def __str__(self):
         return f"invoices {self.customid} for {self.customers.name}"
@@ -38,10 +44,11 @@ class Plan(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'plans'
+        db_table = "plans"
 
     def __str__(self):
         return self.name
+
 
 class PromiseToPay(models.Model):
     invoice = models.ForeignKey(Invoices, on_delete=models.CASCADE)
@@ -50,12 +57,13 @@ class PromiseToPay(models.Model):
     pausedunning = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
-        db_table = 'promise_to_pay'
+        db_table = "promise_to_pay"
 
     def __str__(self):
         return f"Promise to Pay for Invoice {self.invoice.customid}"
-    
+
 
 class DunningPlan(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -65,7 +73,7 @@ class DunningPlan(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'dunning_plan'
+        db_table = "dunning_plan"
 
     def __str__(self):
         return self.name
