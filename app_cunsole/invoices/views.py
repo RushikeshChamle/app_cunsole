@@ -9,6 +9,7 @@ from rest_framework.decorators import permission_classes
 
 # Create your views here.
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from app_cunsole.customer.models import Customers
 from app_cunsole.customer.serializers import CustomerSerializer
@@ -19,7 +20,16 @@ from app_cunsole.users.models import Account
 from app_cunsole.users.serializers import AccountSerializer
 from app_cunsole.users.serializers import UserSerializer
 
+from .serializers import InvoicedataSerializer
 from .serializers import InvoiceSerializer
+from django.core.mail import send_mail
+from django.http import HttpResponse
+from django.conf import settings
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.core.mail import EmailMessage
+import json
 
 
 @csrf_exempt
@@ -34,7 +44,7 @@ def create_invoice(request):
 
             # Validate customer and dunning plan if provided
             customer_id = data.get("customerid")
-            if customer_id and not Customer.objects.filter(id=customer_id).exists():
+            if customer_id and not Customers.objects.filter(id=customer_id).exists():
                 return JsonResponse({"error": "Customer not found"}, status=400)
 
             dunningplan_id = data.get("dunningplan")
@@ -158,7 +168,7 @@ def get_customers_by_account(request):
                 )
 
             # Fetch customers for the user's account using ORM queries
-            account_customers = customers.objects.filter(account_id=account.id)
+            account_customers = Customers.objects.filter(account_id=account.id)
 
             # Serialize the data
             serializer = CustomerSerializer(account_customers, many=True)
@@ -177,7 +187,7 @@ def get_customers_by_account(request):
 
 @csrf_exempt
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+# @permission_classes([IsAuthenticated])
 def get_invoices_by_account(request):
     try:
         # Ensure the user is authenticated (Updated)
@@ -224,7 +234,7 @@ def get_customer_invoice_summary(request):
                 )
 
             # Fetch all customers based on the account
-            customers_list = customers.objects.filter(account_id=account.id)
+            customers_list = Customers.objects.filter(account_id=account.id)
 
             if not customers_list:
                 return Response(
@@ -284,3 +294,28 @@ def get_user_account(request):
             {"error": "Authentication credentials were not provided."},
             status=status.HTTP_401_UNAUTHORIZED,
         )
+
+
+
+@csrf_exempt
+def send_email_view(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            subject = data.get("subject")
+            message = data.get("message")
+            from_email = data.get("from_email")
+            recipient_list = data.get("recipient_list", [])
+
+            email = EmailMessage(
+                subject,
+                message,
+                from_email,
+                recipient_list,
+            )
+            email.content_subtype = "html"  # If sending HTML email
+            email.send(fail_silently=False)
+            return JsonResponse({"status": "success", "message": "Email sent successfully"})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    return JsonResponse({"status": "error", "message": "Invalid request method"}, status=405)

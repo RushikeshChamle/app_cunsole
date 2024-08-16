@@ -4,9 +4,10 @@ from app_cunsole.invoices.views import bulk_create_invoices
 from app_cunsole.invoices.views import create_invoice
 from app_cunsole.invoices.views import get_invoices_by_account
 from app_cunsole.users.views import CustomTokenObtainPairView
-
+from .views import send_email_view
 # from app_cunsole.users.views import TokenRefreshView
 from app_cunsole.users.views import signup
+
 
 urlpatterns = [
     path(
@@ -32,4 +33,5 @@ urlpatterns = [
         get_invoices_by_account,
         name="get_invoices_by_account",
     ),
+    path('send_email_view/', send_email_view, name='send_email_view'),
 ]
