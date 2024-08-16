@@ -246,12 +246,28 @@ X_FRAME_OPTIONS = "DENY"
 # EMAIL
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#email-backend
-EMAIL_BACKEND = env(
-    "DJANGO_EMAIL_BACKEND",
-    default="django.core.mail.backends.smtp.EmailBackend",
-)
-# https://docs.djangoproject.com/en/dev/ref/settings/#email-timeout
-EMAIL_TIMEOUT = 5
+# EMAIL_BACKEND = env(
+#     "DJANGO_EMAIL_BACKEND",
+#     default="django.core.mail.backends.smtp.EmailBackend",
+# )
+# # https://docs.djangoproject.com/en/dev/ref/settings/#email-timeout
+# EMAIL_TIMEOUT = 5
+
+
+EMAIL_BACKEND = "anymail.backends.amazon_ses.EmailBackend"
+ANYMAIL = {
+    # "SENDINBLUE_API_KEY": env("SENDINBLUE_API_KEY"),
+    "AMAZON_SES_CLIENT_PARAMS": {
+        "aws_access_key_id": "AKIA6ODUZKJ7WYST4VRM",
+        "aws_secret_access_key": "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",
+        "region_name": "ap-south-1",
+        # override other default options
+        "config": {
+            "connect_timeout": 30,
+            "read_timeout": 30,
+        },
+    },
+}
 
 # ADMIN
 # ------------------------------------------------------------------------------

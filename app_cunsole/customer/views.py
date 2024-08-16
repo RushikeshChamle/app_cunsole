@@ -10,6 +10,10 @@ from app_cunsole.users.models import User
 from .serializers import CustomerSerializer
 
 
+
+
+
+
 # Create your views here.
 @csrf_exempt
 def create_customer(request):

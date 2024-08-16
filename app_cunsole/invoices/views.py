@@ -22,6 +22,14 @@ from app_cunsole.users.serializers import UserSerializer
 
 from .serializers import InvoicedataSerializer
 from .serializers import InvoiceSerializer
+from django.core.mail import send_mail
+from django.http import HttpResponse
+from django.conf import settings
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.core.mail import EmailMessage
+import json
 
 
 @csrf_exempt
@@ -286,3 +294,28 @@ def get_user_account(request):
             {"error": "Authentication credentials were not provided."},
             status=status.HTTP_401_UNAUTHORIZED,
         )
+
+
+
+@csrf_exempt
+def send_email_view(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            subject = data.get("subject")
+            message = data.get("message")
+            from_email = data.get("from_email")
+            recipient_list = data.get("recipient_list", [])
+
+            email = EmailMessage(
+                subject,
+                message,
+                from_email,
+                recipient_list,
+            )
+            email.content_subtype = "html"  # If sending HTML email
+            email.send(fail_silently=False)
+            return JsonResponse({"status": "success", "message": "Email sent successfully"})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    return JsonResponse({"status": "error", "message": "Invalid request method"}, status=405)
