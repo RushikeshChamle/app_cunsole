@@ -68,7 +68,7 @@ class UserRedirectView(LoginRequiredMixin, RedirectView):
 user_redirect_view = UserRedirectView.as_view()
 
 
-@csrf_exempt
+# @csrf_exempt
 @api_view(["POST"])
 def create_account(request):
     if request.method == "POST":
@@ -83,7 +83,7 @@ def create_account(request):
     )
 
 
-@csrf_exempt
+# @csrf_exempt
 @api_view(["POST"])
 def signup(request):
     if request.method == "POST":
@@ -133,7 +133,7 @@ def signup(request):
         )
 
 
-@csrf_exempt
+# @csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def create_user(request):
@@ -162,7 +162,7 @@ def create_user(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@csrf_exempt
+# @csrf_exempt
 @api_view(["POST"])
 def signin(request):
     print("Signup API called")  # Debug print

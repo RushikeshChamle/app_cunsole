@@ -178,7 +178,7 @@ def bulk_create_customers(request):
 
 
 
-@csrf_exempt
+# @csrf_exempt
 @api_view(["POST"])
 def create_email_trigger(request):
     """
@@ -197,15 +197,15 @@ def create_email_trigger(request):
 
             # Verify that the user has an associated account
             if not account:
-                return Response(
-                    {"error": "User does not have an associated account"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+              return Response(
+                  {"error": "User does not have an associated account"},
+                  status=status.HTTP_400_BAD_REQUEST,
+            )
 
             # Prepare data for serializer by including user and account information
-            data = request.data.copy()
-            data['user'] = user.id
-            data['account'] = account.id
+            data = request.data
+            data.update({'user': user.id, 'account': account.id})
+
 
 
             # Initialize the serializer with the provided data
@@ -270,22 +270,14 @@ def get_email_triggers(request):
 
 
 
-
 @csrf_exempt
-def send_reminders(request):
+def send_reminders_emails(request):
     if request.method == 'POST':
-        # Get today's date
         today = timezone.now().date()
-
-        # Retrieve all active email triggers
         triggers = EmailTrigger.objects.filter(isactive=True)
-
-        # Prepare a list to collect emails sent and related invoice details
         sent_emails_info = []
 
-        # Iterate over each active email trigger
         for trigger in triggers:
-            # Determine the target date based on the trigger condition type
             if trigger.condition_type == 0:  # Before Due Date
                 target_date = today + timezone.timedelta(days=trigger.days_offset)
             elif trigger.condition_type == 1:  # On Due Date
@@ -293,30 +285,31 @@ def send_reminders(request):
             elif trigger.condition_type == 2:  # After Due Date
                 target_date = today - timezone.timedelta(days=trigger.days_offset)
             else:
-                # Skip this trigger if the condition type is not recognized
                 continue
 
-            # Find invoices that match the target date and account associated with the trigger
-            invoices = Invoices.objects.filter(duedate=target_date, account=trigger.account)
+            invoices = Invoices.objects.filter(
+                duedate=target_date,
+                status__in=[0, 1],  # Due or Partial
+                account=trigger.account
+            )
 
-            # Iterate over each invoice
             for invoice in invoices:
-                # Find the customer associated with the invoice
                 customer = Customers.objects.filter(id=invoice.customerid).first()
-
-                # Send an email if the customer has an email address
                 if customer and customer.email:
-                    send_email(
-                        to_email=customer.email,
-                        subject=trigger.email_subject,
-                        body=trigger.email_body.format(
-                            name=customer.name,  # Customer's name
-                            invoice_id=invoice.customid,  # Invoice ID
-                            amount_due=invoice.total_amount - invoice.paid_amount,  # Amount due
-                        )
+                    subject = trigger.email_subject
+                    body = trigger.email_body.format(
+                        name=customer.name,
+                        invoice_id=invoice.customid,
+                        amount_due=invoice.total_amount - invoice.paid_amount,
+                        status='Due' if invoice.status == 0 else 'Partial'
                     )
 
-                    # Collect email and invoice details
+                    send_email(
+                        to_email=customer.email,
+                        subject=subject,
+                        body=body
+                    )
+
                     sent_emails_info.append({
                         "customer_email": customer.email,
                         "customer_name": customer.name,
@@ -324,7 +317,6 @@ def send_reminders(request):
                         "amount_due": invoice.total_amount - invoice.paid_amount,
                     })
 
-        # Return a JSON response indicating success with email and invoice details
         return JsonResponse({
             "status": "Reminders sent successfully",
             "sent_emails_info": sent_emails_info
@@ -347,7 +339,66 @@ def send_email(to_email, subject, body):
     send_mail(
         subject,
         body,
-        'from@example.com',  # Change this to your sender email
+        'info@cunsole.com',  # Change this to your sender email
         [to_email],
         fail_silently=False,
     )
+
+
+
+@csrf_exempt
+@api_view(["POST"])
+def test_email_trigger(request):
+    """
+    Handle POST requests to manually test an email trigger.
+
+    - Retrieves a specified EmailTrigger record.
+    - Sends a test email using the subject and body of the trigger.
+    - Returns the email content and status in the response.
+    """
+    try:
+        # Get the trigger ID from the request data
+        trigger_id = request.data.get('trigger_id')
+
+        # Retrieve the EmailTrigger record
+        trigger = EmailTrigger.objects.filter(id=trigger_id, isactive=True).first()
+
+        if not trigger:
+            return Response({"error": "Email trigger not found or inactive"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Define a test customer email
+        test_email = 'rushikesh@cunsole.com'
+
+        # Prepare the email subject and body using the trigger's data
+        subject = trigger.email_subject.format(
+            name='Cunsole',
+            invoice_id='TEST123',
+            amount_due='0.00',
+            status='Due'  # You can change this to 'Partial' or other statuses for testing
+        )
+
+
+        body = trigger.email_body.format(
+            name='Cunsole',
+            invoice_id='INV001',
+            amount_due='1000.00',
+            status='Due'  # You can change this to 'Partial' or other statuses for testing
+        )
+
+        # Send the test email
+        send_mail(
+            subject,
+            body,
+            'info@cunsole.com',  # Change this to your sender email
+            [test_email],
+            fail_silently=False,
+        )
+
+        return Response({
+            "status": "Test email sent successfully",
+            "email_subject": subject,
+            "email_body": body
+        })
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

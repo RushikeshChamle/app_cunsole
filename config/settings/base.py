@@ -202,21 +202,22 @@ CORS_ALLOW_METHODS = [
     'OPTIONS',
 ]
 
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-    'Content-Type',
-    'X-CSRFToken',
-    # 'Authorization',
-    # 'Session_id',
-]
+# CORS_ALLOW_HEADERS = [
+#     'accept',
+#     'accept-encoding',
+#     'authorization',
+#     'content-type',
+#     'dnt',
+#     'origin',
+#     'user-agent',
+#     'x-csrftoken',
+#     'x-requested-with',
+#     'Content-Type',
+#     'X-CSRFToken',
+#     "csrftoken"
+#     # 'Authorization',
+#     # 'Session_id',
+# ]
 
 
 
@@ -416,3 +417,5 @@ SIMPLE_JWT = {
     "AUTH_COOKIE_PATH": "/",
     "AUTH_COOKIE_SAMESITE": "Lax",
 }
+
+CSRF_HEADER_NAME = "HTTP_X_CSRFTOKEN"

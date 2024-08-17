@@ -9,6 +9,7 @@ class CustomerSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+
 class EmailTriggerSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailTrigger
@@ -17,7 +18,7 @@ class EmailTriggerSerializer(serializers.ModelSerializer):
 
 
 class EmailTriggerSerializer(serializers.ModelSerializer):
-    condition_type_display = serializers.CharField(source='get_condition_type_display', read_only=True)
+    # condition_type_display = serializers.CharField(source='get_condition_type_display', read_only=True)
 
     class Meta:
         model = EmailTrigger
