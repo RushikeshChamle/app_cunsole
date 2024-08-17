@@ -189,7 +189,7 @@ def signin(request):
     )
 
 
-# @csrf_exempt
+
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
