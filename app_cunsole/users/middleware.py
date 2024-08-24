@@ -91,6 +91,7 @@ from django.utils.functional import SimpleLazyObject
 User = get_user_model()
 
 
+
 def get_user_from_token(request):
     header = request.headers.get("Authorization")
     if header and header.startswith("Bearer "):

@@ -6,6 +6,12 @@ from app_cunsole.customer.models import Account
 
 
 class Invoices(models.Model):
+    STATUS_CHOICES = [
+        (0, 'Due'),
+        (1, 'Partial'),
+        (2, 'Completed'),
+        (3, 'Writeoff'),
+    ]
     customid = models.CharField(max_length=255, null=True)
     externalid = models.CharField(max_length=255, blank=True, null=True)
     issuedat = models.DateTimeField(null=True)
@@ -15,6 +21,7 @@ class Invoices(models.Model):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     paid_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     customerid = models.UUIDField()  # Change this to UUIDField to match your database
+    status = models.IntegerField(choices=STATUS_CHOICES, null=True, blank=True)  # New field
     # dunningplanid = models.ForeignKey(DunningPlan, on_delete=models.SET_NULL, null=True, blank=True)
     # dunningplanid = models.UUIDField()  # Change this to UUIDField to match your database
     created_at = models.DateTimeField(auto_now_add=True, null=True)
@@ -31,6 +38,23 @@ class Invoices(models.Model):
 
     def __str__(self):
         return f"invoices {self.customid} for {self.customers.name}"
+
+
+class Payment(models.Model):
+    invoice = models.ForeignKey(Invoices, on_delete=models.CASCADE, related_name='payments')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateTimeField(auto_now_add=True)
+    method = models.CharField(max_length=50, blank=True, null=True)  # e.g., 'Credit Card', 'Bank Transfer'
+    reference = models.CharField(max_length=255, blank=True, null=True)  # e.g., transaction ID or check number
+    account = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True, blank=True)  # New field
+    # user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)  # New field
+    user = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True )
+    class Meta:
+        db_table = "payments"
+
+    def __str__(self):
+        return f"Payment of {self.amount} for invoice {self.invoice.customid}"
+
 
 
 class Plan(models.Model):
