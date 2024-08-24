@@ -319,3 +319,53 @@ def send_email_view(request):
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
     return JsonResponse({"status": "error", "message": "Invalid request method"}, status=405)
+
+
+
+
+@csrf_exempt
+@api_view(["GET"])
+def get_customer_summary(request, customer_id):
+    try:
+        # Ensure the user is authenticated
+        if request.user.is_authenticated:
+            account = request.user.account
+
+            if not account:
+                return Response(
+                    {"error": "User does not have an associated account"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Fetch the specific customer based on the customer_id and account_id
+            try:
+                customer = Customers.objects.get(id=customer_id, account_id=account.id)
+            except Customers.DoesNotExist:
+                return Response(
+                    {"error": "Customer not found for the account"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            # Fetch all invoices associated with the customer
+            customer_invoices = Invoices.objects.filter(customerid=customer.id)
+
+            # Serialize the customer and invoice data
+            customer_serializer = CustomerSerializer(customer)
+            invoices_serializer = InvoicedataSerializer(customer_invoices, many=True)
+
+            # Prepare the response data
+            response_data = {
+                "customer": customer_serializer.data,
+                "invoices": invoices_serializer.data,
+            }
+
+            # Return the response
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        return Response(
+            {"error": "Authentication required"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

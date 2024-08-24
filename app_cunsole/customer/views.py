@@ -9,11 +9,12 @@ from app_cunsole.users.models import User
 
 from .serializers import CustomerSerializer
 
+
+from app_cunsole.invoices.models import Invoices
 from django.shortcuts import render, get_object_or_404
 from django.core.mail import send_mail
 from django.utils import timezone
 from django.http import JsonResponse
-from app_cunsole.invoices.models import Invoices
 
 from .models import  EmailTrigger, Customers
 from django.views import View
@@ -24,7 +25,6 @@ from rest_framework import status
 from .models import EmailTrigger
 from .serializers import EmailTriggerSerializer
 from django.views.decorators.csrf import csrf_exempt
-
 
 
 
@@ -367,7 +367,7 @@ def test_email_trigger(request):
             return Response({"error": "Email trigger not found or inactive"}, status=status.HTTP_404_NOT_FOUND)
 
         # Define a test customer email
-        test_email = 'rushikesh@cunsole.com'
+        test_email = 'rushikeshchamle23@gmail.com'
 
         # Prepare the email subject and body using the trigger's data
         subject = trigger.email_subject.format(
