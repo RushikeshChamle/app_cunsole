@@ -2,7 +2,7 @@ from django.urls import path
 
 from app_cunsole.invoices.views import bulk_create_invoices
 from app_cunsole.invoices.views import create_invoice
-from app_cunsole.invoices.views import get_invoices_by_account, get_customer_summary
+from app_cunsole.invoices.views import get_invoices_by_account, get_customer_summary, add_payment, get_customer_payments
 from app_cunsole.users.views import CustomTokenObtainPairView
 from .views import send_email_view
 # from app_cunsole.users.views import TokenRefreshView
@@ -35,4 +35,6 @@ urlpatterns = [
     ),
     path('send_email_view/', send_email_view, name='send_email_view'),
     path('get_customer_summary/<uuid:customer_id>/', get_customer_summary, name='get_customer_summary'),
+    path('get_customer_payments/<uuid:customer_id>/', get_customer_payments, name='get_customer_payments'),
+
 ]

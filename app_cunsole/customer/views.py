@@ -29,8 +29,9 @@ from django.views.decorators.csrf import csrf_exempt
 
 
 
+
 # Create your views here.
-@csrf_exempt
+
 def create_customer(request):
     if request.method == "POST":
         # Retrieve JWT token from Authorization header
@@ -91,7 +92,7 @@ def create_customer(request):
 
 
 # bulk create customers api
-@csrf_exempt
+
 def bulk_create_customers(request):
     if request.method == "POST":
         # Check if the Authorization header is present
@@ -178,7 +179,7 @@ def bulk_create_customers(request):
 
 
 
-# @csrf_exempt
+
 @api_view(["POST"])
 def create_email_trigger(request):
     """

@@ -14,13 +14,13 @@ from rest_framework.response import Response
 from app_cunsole.customer.models import Customers
 from app_cunsole.customer.serializers import CustomerSerializer
 from app_cunsole.invoices.models import DunningPlan
-from app_cunsole.invoices.models import Invoices
+from app_cunsole.invoices.models import Invoices , Payment
 from app_cunsole.invoices.serializers import CustomerinvsummarySerializer
 from app_cunsole.users.models import Account
 from app_cunsole.users.serializers import AccountSerializer
 from app_cunsole.users.serializers import UserSerializer
 
-from .serializers import InvoicedataSerializer
+from .serializers import InvoicedataSerializer, PaymentSerializer
 from .serializers import InvoiceSerializer
 from django.core.mail import send_mail
 from django.http import HttpResponse
@@ -75,7 +75,7 @@ def create_invoice(request):
         return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
+
 def bulk_create_invoices(request):
     if request.method == "POST":
         # Check if the user is authenticated (Updated)
@@ -151,7 +151,7 @@ def bulk_create_invoices(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_customers_by_account(request):
@@ -185,7 +185,7 @@ def get_customers_by_account(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@csrf_exempt
+
 @api_view(["GET"])
 # @permission_classes([IsAuthenticated])
 def get_invoices_by_account(request):
@@ -219,7 +219,7 @@ def get_invoices_by_account(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@csrf_exempt
+
 @api_view(["GET"])
 def get_customer_invoice_summary(request):
     try:
@@ -268,7 +268,7 @@ def get_customer_invoice_summary(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@csrf_exempt
+
 @api_view(["GET"])
 def get_user_account(request):
     if request.user_is_authenticated:
@@ -323,7 +323,7 @@ def send_email_view(request):
 
 
 
-@csrf_exempt
+# @csrf_exempt
 @api_view(["GET"])
 def get_customer_summary(request, customer_id):
     try:
@@ -369,3 +369,129 @@ def get_customer_summary(request, customer_id):
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+@api_view(['POST'])
+def add_payment(request):
+    """
+    API view to add a payment entry and update the corresponding invoice.
+    """
+    # Ensure the user is authenticated
+    if not request.user_is_authenticated:
+        return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Get the user's associated account
+    account = request.user_account
+    if not account:
+        return Response(
+            {"error": "User does not have an associated account"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    
+    # Initialize and validate the payment serializer
+    payment_serializer = PaymentSerializer(data=request.data)
+    
+    if payment_serializer.is_valid():
+        # Extract the invoice ID and payment amount from validated data
+        invoice_id = payment_serializer.validated_data['invoice']
+        amount = payment_serializer.validated_data['amount']
+        
+        try:
+            # Retrieve the invoice based on the provided ID
+            invoice = Invoices.objects.get(id=invoice_id)
+            
+            # Calculate the remaining amount on the invoice
+            remaining_amount = invoice.total_amount - invoice.paid_amount
+            
+            # Check if the payment amount exceeds the remaining balance
+            if amount > remaining_amount:
+                return Response(
+                    {"detail": "Payment amount exceeds the remaining balance of the invoice."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Save the payment entry with the extracted account ID and user ID
+            payment = payment_serializer.save(account=account)
+            
+            # Update the paid amount on the invoice
+            new_paid_amount = invoice.paid_amount + amount
+            
+            # Determine the new status of the invoice based on the paid amount
+            if new_paid_amount >= invoice.total_amount:
+                invoice.status = Invoices.STATUS_CHOICES[2][0]  # Completed
+            elif new_paid_amount > 0:
+                invoice.status = Invoices.STATUS_CHOICES[1][0]  # Partial
+            else:
+                invoice.status = Invoices.STATUS_CHOICES[0][0]  # Due
+
+            invoice.paid_amount = new_paid_amount
+            invoice.save()
+
+            # Serialize and return the updated invoice
+            updated_invoice_serializer = InvoiceSerializer(invoice)
+            return Response(updated_invoice_serializer.data, status=status.HTTP_201_CREATED)
+        
+        except Invoices.DoesNotExist:
+            # Return error if the invoice does not exist
+            return Response(
+                {"detail": "Invoice not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    # Return validation errors if serializer is not valid
+    return Response(payment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+@csrf_exempt
+@api_view(['GET'])
+def get_customer_payments(request, customer_id):
+    """
+    Retrieve all payments made by a specific customer associated with the authenticated user's account.
+
+    This view requires that the user is authenticated. It fetches payments that are linked
+    to the customer's invoices under the authenticated user's account. The data is serialized
+    and returned in the response.
+
+    Returns:
+        Response: A JSON response containing the list of payments and a status code.
+                  If authentication is not provided or the customer is not found, returns
+                  an appropriate error response.
+    """
+    if request.user_is_authenticated:
+        # Retrieve the authenticated user
+        user = request.user
+
+        # Retrieve the account associated with the authenticated user
+        account = request.user_account
+
+        try:
+            # Ensure the customer exists and belongs to the user's account
+            customer = Customers.objects.get(id=customer_id, account=account)
+            
+            # Retrieve all payments linked to the customer's invoices
+            payments = Payment.objects.filter(invoice__customerid=customer.id, account=account)
+            
+            # Serialize the payment data
+            serializer = PaymentSerializer(payments, many=True)
+            
+            # Return the serialized data with a 200 OK status
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except Customers.DoesNotExist:
+            # Return error if the customer does not exist or does not belong to the user's account
+            return Response(
+                {"detail": "Customer not found or does not belong to your account."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    else:
+        # If the user is not authenticated, return a 401 Unauthorized error
+        return Response(
+            {"error": "Authentication credentials were not provided."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
