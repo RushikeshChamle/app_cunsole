@@ -14,7 +14,7 @@ class Invoices(models.Model):
     ]
     customid = models.CharField(max_length=255, null=True)
     externalid = models.CharField(max_length=255, blank=True, null=True)
-    issuedat = models.DateTimeField(null=True)
+    issuedate = models.DateTimeField(null=True)
     duedate = models.DateTimeField(null=True)
     name = models.CharField(max_length=255, blank=True, null=True)
     currency = models.CharField(max_length=3, null=True)
@@ -25,7 +25,10 @@ class Invoices(models.Model):
     # dunningplanid = models.ForeignKey(DunningPlan, on_delete=models.SET_NULL, null=True, blank=True)
     # dunningplanid = models.UUIDField()  # Change this to UUIDField to match your database
     created_at = models.DateTimeField(auto_now_add=True, null=True)
+    file_path = models.URLField(max_length=9000, blank=True, null=True)  # Shortened field name
     updated_at = models.DateTimeField(auto_now=True, null=True)
+    reference = models.CharField( blank=True, null=True)  # e.g., transaction ID or check number
+    currency_code = models.CharField(max_length=3, blank=True, null=True)
     account = models.ForeignKey(
         Account,
         on_delete=models.SET_NULL,
@@ -38,6 +41,7 @@ class Invoices(models.Model):
 
     def __str__(self):
         return f"invoices {self.customid} for {self.customers.name}"
+
 
 
 class Payment(models.Model):

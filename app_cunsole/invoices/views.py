@@ -6,7 +6,7 @@ from requests import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.decorators import permission_classes
-
+from django.shortcuts import get_object_or_404
 # Create your views here.
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -495,3 +495,36 @@ def get_customer_payments(request, customer_id):
             {"error": "Authentication credentials were not provided."},
             status=status.HTTP_401_UNAUTHORIZED,
         )
+    
+
+
+@api_view(['GET'])
+def invoice_details(request, invoice_id):
+    try:
+        # Check if the user is authenticated
+        if not request.user.is_authenticated:
+            return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Retrieve the invoice details
+        invoice = Invoices.objects.get(pk=invoice_id)
+        customer = Customers.objects.get(id=invoice.customerid)
+        payments = Payment.objects.filter(invoice=invoice)
+
+        # Serialize the data
+        invoice_data = InvoiceSerializer(invoice).data
+        customer_data = CustomerinvsummarySerializer(customer).data
+        payment_data = PaymentSerializer(payments, many=True).data
+
+        # Combine the data into a single response
+        response_data = {
+            "invoice": invoice_data,
+            "customer": customer_data,
+            "payments": payment_data
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
+    
+    except Invoices.DoesNotExist:
+        return Response({"error": "Invoice not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Customers.DoesNotExist:
+        return Response({"error": "Customer not found"}, status=status.HTTP_404_NOT_FOUND)
