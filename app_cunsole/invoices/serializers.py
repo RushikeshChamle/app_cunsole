@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from app_cunsole.customer.models import Customers
+from app_cunsole.customer.models import Customers , EmailTrigger
 
 from .models import Invoices, Payment
 
@@ -55,4 +55,22 @@ class CustomerinvsummarySerializer(serializers.ModelSerializer):
 class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
-        fields = ['invoice', 'amount', 'method', 'reference', 'account', 'user']
+        fields = "__all__"
+
+
+
+class EmailTriggerDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailTrigger
+        fields = '__all__'
+
+class InvoiceWithTriggersSerializer(serializers.ModelSerializer):
+    email_triggers = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Invoices
+        fields = '__all__'
+
+    def get_email_triggers(self, obj):
+        triggers = EmailTrigger.objects.filter(account=obj.account, isactive=True)
+        return EmailTriggerDetailSerializer(triggers, many=True).data
