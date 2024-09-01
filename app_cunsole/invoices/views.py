@@ -6,12 +6,12 @@ from requests import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.decorators import permission_classes
-
+from django.shortcuts import get_object_or_404
 # Create your views here.
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from app_cunsole.customer.models import Customers
+from app_cunsole.customer.models import Customers, EmailTrigger
 from app_cunsole.customer.serializers import CustomerSerializer
 from app_cunsole.invoices.models import DunningPlan
 from app_cunsole.invoices.models import Invoices , Payment
@@ -19,12 +19,15 @@ from app_cunsole.invoices.serializers import CustomerinvsummarySerializer
 from app_cunsole.users.models import Account
 from app_cunsole.users.serializers import AccountSerializer
 from app_cunsole.users.serializers import UserSerializer
-
+from .serializers import InvoiceWithTriggersSerializer
 from .serializers import InvoicedataSerializer, PaymentSerializer
 from .serializers import InvoiceSerializer
 from django.core.mail import send_mail
 from django.http import HttpResponse
+from django.utils import timezone
+from datetime import timedelta
 from django.conf import settings
+from .models import Invoices
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -495,3 +498,195 @@ def get_customer_payments(request, customer_id):
             {"error": "Authentication credentials were not provided."},
             status=status.HTTP_401_UNAUTHORIZED,
         )
+    
+
+
+@api_view(['GET'])
+def invoice_details(request, invoice_id):
+    try:
+        # Check if the user is authenticated
+        if not request.user.is_authenticated:
+            return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Retrieve the invoice details
+        invoice = Invoices.objects.get(pk=invoice_id)
+        customer = Customers.objects.get(id=invoice.customerid)
+        payments = Payment.objects.filter(invoice=invoice)
+
+        # Serialize the data
+        invoice_data = InvoiceSerializer(invoice).data
+        customer_data = CustomerinvsummarySerializer(customer).data
+        payment_data = PaymentSerializer(payments, many=True).data
+
+        # Combine the data into a single response
+        response_data = {
+            "invoice": invoice_data,
+            "customer": customer_data,
+            "payments": payment_data
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
+    
+    except Invoices.DoesNotExist:
+        return Response({"error": "Invoice not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Customers.DoesNotExist:
+        return Response({"error": "Customer not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+
+
+
+
+
+
+
+from .serializers import InvoiceWithTriggersSerializer
+
+@api_view(['GET'])
+def check_email_trigger(request, invoice_id):
+    try:
+        invoice = Invoices.objects.get(id=invoice_id)
+    except Invoices.DoesNotExist:
+        return Response({'error': 'Invoice not found'}, status=404)
+
+    triggers = EmailTrigger.objects.filter(account=invoice.account, isactive=True)
+    active_triggers = []
+
+    for trigger in triggers:
+        condition_date = {
+            0: invoice.duedate - timedelta(days=trigger.days_offset),
+            1: invoice.duedate,
+            2: invoice.duedate + timedelta(days=trigger.days_offset)
+        }.get(trigger.condition_type, invoice.duedate)
+
+        if timezone.now() >= condition_date:
+            active_triggers.append({
+                'trigger_id': trigger.id,
+                'trigger_name': trigger.name,
+                'condition_type': trigger.get_condition_type_display(),
+                'email_subject': trigger.email_subject,
+                'email_body': trigger.email_body,
+                'trigger_date': condition_date
+            })
+
+    return Response({'invoice_id': invoice_id, 'active_triggers': active_triggers})
+
+
+
+
+
+# @api_view(['GET'])
+# def check_email_trigger(request, invoice_id):
+#     try:
+#         invoice = Invoices.objects.get(id=invoice_id)
+#     except Invoices.DoesNotExist:
+#         return Response({'error': 'Invoice not found'}, status=404)
+
+#     # Serialize the invoice including email triggers
+#     serializer = InvoiceWithTriggersSerializer(invoice)
+#     invoice_data = serializer.data
+
+#     triggers = EmailTrigger.objects.filter(account=invoice.account, isactive=True)
+#     active_triggers = []
+
+#     for trigger in triggers:
+#         if trigger.condition_type == 0:  # Reminder before due
+#             trigger_date = invoice.duedate - timedelta(days=trigger.days_offset)
+#         elif trigger.condition_type == 1:  # Reminder on due
+#             trigger_date = invoice.duedate
+#         elif trigger.condition_type == 2:  # Reminder after due
+#             trigger_date = invoice.duedate + timedelta(days=trigger.days_offset)
+#         else:
+#             trigger_date = invoice.duedate  # Default case
+
+#         # Calculate next alert date
+#         next_alert_date = trigger_date if timezone.now() >= trigger_date else None
+        
+#         active_triggers.append({
+#             'trigger_id': trigger.id,
+#             'trigger_name': trigger.name,
+#             'condition_type': trigger.get_condition_type_display(),
+#             'email_subject': trigger.email_subject,
+#             'email_body': trigger.email_body,
+#             'trigger_date': trigger_date,
+#             'next_alert_date': next_alert_date
+#         })
+
+#     return Response({'invoice': invoice_data, 'active_triggers': active_triggers})
+def format_email_content(template, context):
+    """
+    Replace placeholders in the email template with actual data.
+    """
+    for key, value in context.items():
+        placeholder = f'{{{{ {key} }}}}'
+        if placeholder in template:
+            template = template.replace(placeholder, str(value))
+        else:
+            print(f"Placeholder {placeholder} not found in template.")
+    return template
+
+@api_view(['GET'])
+def check_email_trigger(request, invoice_id):
+    try:
+        invoice = Invoices.objects.get(id=invoice_id)
+    except Invoices.DoesNotExist:
+        return JsonResponse({'error': 'Invoice not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+    try:
+        serializer = InvoiceWithTriggersSerializer(invoice)
+        invoice_data = serializer.data
+    except Exception as e:
+        return JsonResponse({'error': f'Error serializing invoice: {str(e)}'}, status=500)
+
+    triggers = EmailTrigger.objects.filter(account=invoice.account, isactive=True)
+    active_triggers = []
+
+    for trigger in triggers:
+        try:
+            if trigger.condition_type == 0:  # Reminder before due
+                trigger_date = invoice.duedate - timedelta(days=trigger.days_offset)
+            elif trigger.condition_type == 1:  # Reminder on due
+                trigger_date = invoice.duedate
+            elif trigger.condition_type == 2:  # Reminder after due
+                trigger_date = invoice.duedate + timedelta(days=trigger.days_offset)
+            else:
+                trigger_date = invoice.duedate  # Default case
+
+            next_alert_date = trigger_date if timezone.now() >= trigger_date else None
+
+            try:
+                customer = Customers.objects.get(id=invoice.customerid)
+            except Customers.DoesNotExist:
+                return JsonResponse({'error': f'Customer with ID {invoice.customerid} not found'}, status=404)
+
+            context = {
+                'invoice_id': invoice.customid,
+                'name': customer.name,
+                'status': invoice.get_status_display(),
+                'amount_due': invoice.total_amount - invoice.paid_amount
+            }
+
+            email_subject = format_email_content(trigger.email_subject, context)
+            email_body = format_email_content(trigger.email_body, context)
+
+            # Debug output
+            print(f"Original Email Subject: {trigger.email_subject}")
+            print(f"Formatted Email Subject: {email_subject}")
+            print(f"Original Email Body: {trigger.email_body}")
+            print(f"Formatted Email Body: {email_body}")
+
+            active_triggers.append({
+                'trigger_id': trigger.id,
+                'trigger_name': trigger.name,
+                'condition_type': trigger.get_condition_type_display(),
+                'email_subject': email_subject,
+                'email_body': email_body,
+                'trigger_date': trigger_date,
+                'next_alert_date': next_alert_date
+            })
+
+        except Exception as e:
+            return JsonResponse({'error': f'Error processing trigger: {str(e)}'}, status=500)
+
+    return JsonResponse({'invoice': invoice_data, 'active_triggers': active_triggers})

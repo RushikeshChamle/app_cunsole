@@ -11,6 +11,8 @@ class Account(models.Model):
 
     class Meta:
         db_table = "account"
+    
+
 
 
 class Customers(models.Model):

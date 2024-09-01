@@ -6,9 +6,12 @@ from django.views.decorators.csrf import csrf_exempt
 
 from app_cunsole.customer.models import Customers
 from app_cunsole.users.models import User
-
+from celery import shared_task
+from django.core.mail import send_mail
+from django.utils import timezone
 from .serializers import CustomerSerializer
-
+import uuid
+from django.core.mail import EmailMessage
 
 from app_cunsole.invoices.models import Invoices
 from django.shortcuts import render, get_object_or_404
@@ -271,72 +274,133 @@ def get_email_triggers(request):
 
 
 
-@csrf_exempt
-def send_reminders_emails(request):
-    if request.method == 'POST':
-        today = timezone.now().date()
-        triggers = EmailTrigger.objects.filter(isactive=True)
-        sent_emails_info = []
+# @csrf_exempt
+# def send_reminders_emails(request):
+#     if request.method == 'POST':
+#         today = timezone.now().date()
+#         triggers = EmailTrigger.objects.filter(isactive=True)
+#         sent_emails_info = []
 
-        for trigger in triggers:
-            if trigger.condition_type == 0:  # Before Due Date
-                target_date = today + timezone.timedelta(days=trigger.days_offset)
-            elif trigger.condition_type == 1:  # On Due Date
-                target_date = today
-            elif trigger.condition_type == 2:  # After Due Date
-                target_date = today - timezone.timedelta(days=trigger.days_offset)
-            else:
-                continue
+#         for trigger in triggers:
+#             if trigger.condition_type == 0:  # Before Due Date
+#                 target_date = today + timezone.timedelta(days=trigger.days_offset)
+#             elif trigger.condition_type == 1:  # On Due Date
+#                 target_date = today
+#             elif trigger.condition_type == 2:  # After Due Date
+#                 target_date = today - timezone.timedelta(days=trigger.days_offset)
+#             else:
+#                 continue
 
-            invoices = Invoices.objects.filter(
-                duedate=target_date,
-                status__in=[0, 1],  # Due or Partial
-                account=trigger.account
-            )
+#             invoices = Invoices.objects.filter(
+#                 duedate=target_date,
+#                 status__in=[0, 1],  # Due or Partial
+#                 account=trigger.account
+#             )
 
-            for invoice in invoices:
-                customer = Customers.objects.filter(id=invoice.customerid).first()
-                if customer and customer.email:
-                    subject = trigger.email_subject
-                    body = trigger.email_body.format(
-                        name=customer.name,
-                        invoice_id=invoice.customid,
-                        amount_due=invoice.total_amount - invoice.paid_amount,
-                        status='Due' if invoice.status == 0 else 'Partial'
-                    )
+#             for invoice in invoices:
+#                 customer = Customers.objects.filter(id=invoice.customerid).first()
+#                 if customer and customer.email:
+#                     subject = trigger.email_subject
+#                     body = trigger.email_body.format(
+#                         name=customer.name,
+#                         invoice_id=invoice.customid,
+#                         amount_due=invoice.total_amount - invoice.paid_amount,
+#                         status='Due' if invoice.status == 0 else 'Partial'
+#                     )
 
-                    send_email(
-                        to_email=customer.email,
-                        subject=subject,
-                        body=body
-                    )
+#                     send_email(
+#                         to_email=customer.email,
+#                         subject=subject,
+#                         body=body
+#                     )
 
-                    sent_emails_info.append({
-                        "customer_email": customer.email,
-                        "customer_name": customer.name,
-                        "invoice_id": invoice.customid,
-                        "amount_due": invoice.total_amount - invoice.paid_amount,
-                    })
+#                     sent_emails_info.append({
+#                         "customer_email": customer.email,
+#                         "customer_name": customer.name,
+#                         "invoice_id": invoice.customid,
+#                         "amount_due": invoice.total_amount - invoice.paid_amount,
+#                     })
 
-        return JsonResponse({
-            "status": "Reminders sent successfully",
-            "sent_emails_info": sent_emails_info
-        })
-    else:
-        return JsonResponse({"error": "Invalid request method"}, status=405)
+#         return JsonResponse({
+#             "status": "Reminders sent successfully",
+#             "sent_emails_info": sent_emails_info
+#         })
+#     else:
+#         return JsonResponse({"error": "Invalid request method"}, status=405)
 
 
 
-@csrf_exempt
-def send_email(to_email, subject, body):
-    """
-    Send an email to the specified address.
+# @csrf_exempt
+# def send_email(to_email, subject, body):
+#     """
+#     Send an email to the specified address.
 
-    Parameters:
-    - to_email (str): The recipient's email address
-    - subject (str): The subject of the email
-    - body (str): The body content of the email
-    """
+#     Parameters:
+#     - to_email (str): The recipient's email address
+#     - subject (str): The subject of the email
+#     - body (str): The body content of the email
+#     """
+#     send_mail(
+#         subject,
+#         body,
+#         'info@cunsole.com',  # Change this to your sender email
+#         [to_email],
+#         fail_silently=False,
+#     )
+
+
+
+
+@shared_task
+def send_reminders_emails_task():
+    today = timezone.now().date()
+    triggers = EmailTrigger.objects.filter(isactive=True)
+    sent_emails_info = []
+
+    for trigger in triggers:
+        if trigger.condition_type == 0:  # Before Due Date
+            target_date = today + timezone.timedelta(days=trigger.days_offset)
+        elif trigger.condition_type == 1:  # On Due Date
+            target_date = today
+        elif trigger.condition_type == 2:  # After Due Date
+            target_date = today - timezone.timedelta(days=trigger.days_offset)
+        else:
+            continue
+
+        invoices = Invoices.objects.filter(
+            duedate=target_date,
+            status__in=[0, 1],  # Due or Partial
+            account=trigger.account
+        )
+
+        for invoice in invoices:
+            customer = Customers.objects.filter(id=invoice.customerid).first()
+            if customer and customer.email:
+                subject = trigger.email_subject
+                body = trigger.email_body.format(
+                    name=customer.name,
+                    invoice_id=invoice.customid,
+                    amount_due=invoice.total_amount - invoice.paid_amount,
+                    status='Due' if invoice.status == 0 else 'Partial'
+                )
+
+                # Send the email asynchronously
+                send_email_task.delay(customer.email, subject, body)
+
+                sent_emails_info.append({
+                    "customer_email": customer.email,
+                    "customer_name": customer.name,
+                    "invoice_id": invoice.customid,
+                    "amount_due": invoice.total_amount - invoice.paid_amount,
+                })
+
+    return sent_emails_info
+
+
+
+
+@shared_task
+def send_email_task(to_email, subject, body):
     send_mail(
         subject,
         body,
@@ -344,6 +408,22 @@ def send_email(to_email, subject, body):
         [to_email],
         fail_silently=False,
     )
+
+
+
+@csrf_exempt
+def send_reminders_emails(request):
+    if request.method == 'POST':
+        # Call the Celery task asynchronously
+        result = send_reminders_emails_task.delay()
+
+        return JsonResponse({
+            "status": "Reminders are being sent asynchronously",
+            "task_id": result.id  # Return the task ID for reference
+        })
+    else:
+        return JsonResponse({"error": "Invalid request method"}, status=405)
+
 
 
 
@@ -378,7 +458,6 @@ def test_email_trigger(request):
             status='Due'  # You can change this to 'Partial' or other statuses for testing
         )
 
-
         body = trigger.email_body.format(
             name='Cunsole',
             invoice_id='INV001',
@@ -386,17 +465,11 @@ def test_email_trigger(request):
             status='Due'  # You can change this to 'Partial' or other statuses for testing
         )
 
-        # Send the test email
-        send_mail(
-            subject,
-            body,
-            'info@cunsole.com',  # Change this to your sender email
-            [test_email],
-            fail_silently=False,
-        )
+        # Send the test email asynchronously
+        send_email_task.delay(test_email, subject, body)
 
         return Response({
-            "status": "Test email sent successfully",
+            "status": "Test email task initiated",
             "email_subject": subject,
             "email_body": body
         })
