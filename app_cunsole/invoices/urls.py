@@ -38,6 +38,6 @@ urlpatterns = [
     path('get_customer_payments/<uuid:customer_id>/', get_customer_payments, name='get_customer_payments'),
     path('invoice_details/<int:invoice_id>/', invoice_details, name='invoice_details'),
     path('check_email_trigger/<int:invoice_id>/', check_email_trigger, name='check_email_trigger'),
-
-
+    path('add_payment/', add_payment, name='add_payment'),
+    
 ]

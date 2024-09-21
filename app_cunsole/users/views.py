@@ -1,5 +1,6 @@
 import datetime
 import json
+from django.middleware.csrf import get_token
 
 import jwt
 from django.conf import settings
@@ -19,15 +20,14 @@ from rest_framework.decorators import permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
-
 from app_cunsole.customer.models import Account
 from app_cunsole.users.models import User
-
 from .models import User
 from .serializers import AccountSerializer
 from .serializers import CustomTokenObtainPairSerializer
 from .serializers import UserCreationSerializer
 from .serializers import UserdataSerializer
+
 
 SECRET_KEY = "django-insecure-3t!a&dtryebf_9n(zhm&b#%(!nqc67hisav6hy02faz_ztb=_$"  # Replace with your actual secret key
 

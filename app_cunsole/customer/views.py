@@ -2,8 +2,9 @@ import json
 
 import jwt
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, permission_classes
 
+from rest_framework.permissions import IsAuthenticated
 from app_cunsole.customer.models import Customers
 from app_cunsole.users.models import User
 from celery import shared_task
@@ -21,7 +22,7 @@ from django.http import JsonResponse
 
 from .models import  EmailTrigger, Customers
 from django.views import View
-from django.views.decorators.csrf import csrf_exempt
+
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -33,66 +34,113 @@ from django.views.decorators.csrf import csrf_exempt
 
 
 
-# Create your views here.
+# # Create your views here.
+# def create_customer(request):
+#     if request.method == "POST":
+#         # Retrieve JWT token from Authorization header
+#         header = request.headers.get("Authorization")
 
+#         if header and header.startswith("Bearer "):
+#             token = header.split(" ")[1]
+
+#             try:
+#                 # Decode the JWT token
+#                 payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+#                 user_id = payload["user_id"]
+
+#                 # Fetch the user and their account
+#                 user = User.objects.get(id=user_id)
+#                 account = user.Account
+
+#                 # Deserialize the request data
+#                 data = json.loads(request.body)
+
+#                 # Add user and account to the request data
+#                 data["user"] = user_id
+#                 data["account"] = account.id if account else None
+
+#                 serializer = CustomerSerializer(data=data)
+
+#                 if serializer.is_valid():
+#                     # Save the customer instance
+#                     customer = serializer.save()
+#                     return JsonResponse(
+#                         {
+#                             "success": "Customer created successfully",
+#                             "customer": serializer.data,
+#                         },
+#                         status=201,
+#                     )
+#                 else:
+#                     return JsonResponse(
+#                         {"error": "Invalid data", "details": serializer.errors},
+#                         status=400,
+#                     )
+
+#             except jwt.ExpiredSignatureError:
+#                 return JsonResponse({"error": "Token is expired"}, status=401)
+#             except jwt.InvalidTokenError:
+#                 return JsonResponse({"error": "Invalid token"}, status=401)
+#             except User.DoesNotExist:
+#                 return JsonResponse({"error": "User not found"}, status=401)
+
+#         return JsonResponse(
+#             {"error": "Authorization header format is invalid"},
+#             status=401,
+#         )
+
+#     return JsonResponse({"error": "Method not allowed."}, status=405)
+
+
+
+@api_view(["POST"])
 def create_customer(request):
-    if request.method == "POST":
-        # Retrieve JWT token from Authorization header
-        header = request.headers.get("Authorization")
+    """
+    Create a new customer record.
 
-        if header and header.startswith("Bearer "):
-            token = header.split(" ")[1]
+    This view requires that the user is authenticated. It uses the data from the request to create a new
+    customer record linked to the authenticated user's account. The data is validated and serialized before
+    saving the new customer record.
 
-            try:
-                # Decode the JWT token
-                payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-                user_id = payload["user_id"]
+    Returns:
+        Response: A JSON response indicating the result of the creation attempt.
+                  If authentication is not provided, returns a 401 Unauthorized error.
+                  If the data is invalid, returns a 400 Bad Request error.
+    """
+    if request.user_is_authenticated:
+        try:
+            # Deserialize the request data
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON format"}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Fetch the user and their account
-                user = User.objects.get(id=user_id)
-                account = user.Account
+        # Add user and account to the request data
+        data["user"] = request.user.id
+        data["account"] = request.user_account.id if request.user_account else None
 
-                # Deserialize the request data
-                data = json.loads(request.body)
+        # Serialize and validate the data
+        serializer = CustomerSerializer(data=data)
 
-                # Add user and account to the request data
-                data["user"] = user_id
-                data["account"] = account.id if account else None
-
-                serializer = CustomerSerializer(data=data)
-
-                if serializer.is_valid():
-                    # Save the customer instance
-                    customer = serializer.save()
-                    return JsonResponse(
-                        {
-                            "success": "Customer created successfully",
-                            "customer": serializer.data,
-                        },
-                        status=201,
-                    )
-                else:
-                    return JsonResponse(
-                        {"error": "Invalid data", "details": serializer.errors},
-                        status=400,
-                    )
-
-            except jwt.ExpiredSignatureError:
-                return JsonResponse({"error": "Token is expired"}, status=401)
-            except jwt.InvalidTokenError:
-                return JsonResponse({"error": "Invalid token"}, status=401)
-            except User.DoesNotExist:
-                return JsonResponse({"error": "User not found"}, status=401)
-
+        if serializer.is_valid():
+            # Save the customer instance
+            customer = serializer.save()
+            return JsonResponse(
+                {
+                    "success": "Customer created successfully",
+                    "customer": serializer.data,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        else:
+            return JsonResponse(
+                {"error": "Invalid data", "details": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+    else:
         return JsonResponse(
-            {"error": "Authorization header format is invalid"},
-            status=401,
+            {"error": "Authentication credentials were not provided."},
+            status=status.HTTP_401_UNAUTHORIZED,
         )
-
-    return JsonResponse({"error": "Method not allowed."}, status=405)
-
-
-
 
 # bulk create customers api
 
@@ -227,43 +275,136 @@ def create_email_trigger(request):
         return Response(
             {"error": "Authentication required"},
             status=status.HTTP_401_UNAUTHORIZED,
-        )
 
+        )
+    
     except Exception as e:
         # Return a server error response in case of unexpected exceptions
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
-@csrf_exempt
-@api_view(["GET"])
-def get_email_triggers(request):
-    """
-    Retrieve all active email triggers for the authenticated user and their associated account.
 
-    This view requires that the user is authenticated. It fetches email triggers that are linked
-    to the authenticated user's account and are marked as active. The data is serialized and returned
-    in the response.
+# @api_view(["GET"])
+# def get_email_triggers(request):
+#     """
+#     Retrieve all active email triggers for the authenticated user and their associated account.
+
+#     This view requires that the user is authenticated. It fetches email triggers that are linked
+#     to the authenticated user's account and are marked as active. The data is serialized and returned
+#     in the response.
+
+#     Returns:
+#         Response: A JSON response containing the list of email triggers and a status code.
+#                   If authentication is not provided, returns a 401 Unauthorized error.
+#     """
+#     if request.user_is_authenticated:
+#         # Retrieve the authenticated user
+#         user = request.user
+
+#         # Retrieve the account associated with the authenticated user
+#         account = request.user_account
+
+#         # Filter email triggers based on the user, their account, and active status
+#         email_triggers = EmailTrigger.objects.filter(user=user, account=account, isactive=True)
+
+#         # Serialize the email triggers
+#         serializer = EmailTriggerSerializer(email_triggers, many=True)
+
+#         # Return the serialized data with a 200 OK status
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+#     else:
+#         # If the user is not authenticated, return a 401 Unauthorized error
+#         return Response(
+#             {"error": "Authentication credentials were not provided."},
+#             status=status.HTTP_401_UNAUTHORIZED,
+#         )
+
+import logging
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from .models import EmailTrigger
+from .serializers import EmailTriggerSerializer
+
+logger = logging.getLogger(__name__)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_email_triggers_by_account(request):
+    try:
+        user = request.user
+        if not user.is_authenticated:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        account = getattr(user, 'account', None)
+        if not account:
+            return Response(
+                {"error": "User does not have an associated account"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        email_triggers = EmailTrigger.objects.filter(account=account)
+        serializer = EmailTriggerSerializer(email_triggers, many=True)
+        
+        return Response({"email_triggers": serializer.data}, status=status.HTTP_200_OK)
+
+    except EmailTrigger.DoesNotExist:
+        logger.warning(f"No email triggers found for account {account.id}")
+        return Response({"email_triggers": []}, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        logger.error(f"Error in get_email_triggers_by_account: {str(e)}")
+        return Response(
+            {"error": "An unexpected error occurred"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# @csrf_exempt
+@api_view(["GET"])
+def get_email_trigger_by_id(request, trigger_id):
+    """
+    Retrieve a specific email trigger by its ID.
+
+    This view requires that the user is authenticated. It fetches the email trigger with the specified
+    ID that is linked to the authenticated user's account and is marked as active. The data is serialized
+    and returned in the response.
+
+    Args:
+        trigger_id (uuid): The ID of the email trigger to retrieve.
 
     Returns:
-        Response: A JSON response containing the list of email triggers and a status code.
+        Response: A JSON response containing the email trigger data and a status code.
                   If authentication is not provided, returns a 401 Unauthorized error.
+                  If the email trigger is not found, returns a 404 Not Found error.
     """
-    if request.user_is_authenticated:
-        # Retrieve the authenticated user
-        user = request.user
+    if request.user.is_authenticated:
+        try:
+            # Retrieve the authenticated user
+            user = request.user
 
-        # Retrieve the account associated with the authenticated user
-        account = request.user_account
+            # Retrieve the account associated with the authenticated user
+            account = request.user_account
 
-        # Filter email triggers based on the user, their account, and active status
-        email_triggers = EmailTrigger.objects.filter(user=user, account=account, isactive=True)
+            # Retrieve the email trigger based on the ID and check if it belongs to the user and account
+            email_trigger = EmailTrigger.objects.get(id=trigger_id, user=user, account=account, isactive=True)
 
-        # Serialize the email triggers
-        serializer = EmailTriggerSerializer(email_triggers, many=True)
+            # Serialize the email trigger
+            serializer = EmailTriggerSerializer(email_trigger)
 
-        # Return the serialized data with a 200 OK status
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            # Return the serialized data with a 200 OK status
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except EmailTrigger.DoesNotExist:
+            # If the email trigger does not exist, return a 404 Not Found error
+            return Response(
+                {"error": "Email trigger not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
     else:
         # If the user is not authenticated, return a 401 Unauthorized error
         return Response(
@@ -272,82 +413,37 @@ def get_email_triggers(request):
         )
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_customers_by_account(request):
+    try:
+        # Ensure the user is authenticated (Updated)
+        if request.user_is_authenticated:
+            user = request.user
+            account = request.user_account
 
+            if not account:
+                return Response(
+                    {"error": "User does not have an associated account"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-# @csrf_exempt
-# def send_reminders_emails(request):
-#     if request.method == 'POST':
-#         today = timezone.now().date()
-#         triggers = EmailTrigger.objects.filter(isactive=True)
-#         sent_emails_info = []
+            # Fetch customers for the user's account using ORM queries
+            account_customers = Customers.objects.filter(account_id=account.id)
 
-#         for trigger in triggers:
-#             if trigger.condition_type == 0:  # Before Due Date
-#                 target_date = today + timezone.timedelta(days=trigger.days_offset)
-#             elif trigger.condition_type == 1:  # On Due Date
-#                 target_date = today
-#             elif trigger.condition_type == 2:  # After Due Date
-#                 target_date = today - timezone.timedelta(days=trigger.days_offset)
-#             else:
-#                 continue
+            # Serialize the data
+            serializer = CustomerSerializer(account_customers, many=True)
 
-#             invoices = Invoices.objects.filter(
-#                 duedate=target_date,
-#                 status__in=[0, 1],  # Due or Partial
-#                 account=trigger.account
-#             )
+            # Return the response
+            return Response({"customers": serializer.data}, status=status.HTTP_200_OK)
 
-#             for invoice in invoices:
-#                 customer = Customers.objects.filter(id=invoice.customerid).first()
-#                 if customer and customer.email:
-#                     subject = trigger.email_subject
-#                     body = trigger.email_body.format(
-#                         name=customer.name,
-#                         invoice_id=invoice.customid,
-#                         amount_due=invoice.total_amount - invoice.paid_amount,
-#                         status='Due' if invoice.status == 0 else 'Partial'
-#                     )
+        return Response(
+            {"error": "Authentication required"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
 
-#                     send_email(
-#                         to_email=customer.email,
-#                         subject=subject,
-#                         body=body
-#                     )
-
-#                     sent_emails_info.append({
-#                         "customer_email": customer.email,
-#                         "customer_name": customer.name,
-#                         "invoice_id": invoice.customid,
-#                         "amount_due": invoice.total_amount - invoice.paid_amount,
-#                     })
-
-#         return JsonResponse({
-#             "status": "Reminders sent successfully",
-#             "sent_emails_info": sent_emails_info
-#         })
-#     else:
-#         return JsonResponse({"error": "Invalid request method"}, status=405)
-
-
-
-# @csrf_exempt
-# def send_email(to_email, subject, body):
-#     """
-#     Send an email to the specified address.
-
-#     Parameters:
-#     - to_email (str): The recipient's email address
-#     - subject (str): The subject of the email
-#     - body (str): The body content of the email
-#     """
-#     send_mail(
-#         subject,
-#         body,
-#         'info@cunsole.com',  # Change this to your sender email
-#         [to_email],
-#         fail_silently=False,
-#     )
-
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -411,7 +507,7 @@ def send_email_task(to_email, subject, body):
 
 
 
-@csrf_exempt
+# @csrf_exempt
 def send_reminders_emails(request):
     if request.method == 'POST':
         # Call the Celery task asynchronously
@@ -427,7 +523,7 @@ def send_reminders_emails(request):
 
 
 
-@csrf_exempt
+# @csrf_exempt
 @api_view(["POST"])
 def test_email_trigger(request):
     """

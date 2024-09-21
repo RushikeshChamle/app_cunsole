@@ -6,8 +6,8 @@
 # from django.http import JsonResponse
 # from django.utils.functional import SimpleLazyObject
 
-# User = get_user_model()
 
+# User = get_user_model()
 
 
 # def get_user_from_token(request):
@@ -61,6 +61,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.http import JsonResponse
 from django.utils.functional import SimpleLazyObject
+from django.middleware.csrf import rotate_token
 
 User = get_user_model()
 
@@ -83,6 +84,7 @@ def get_user_from_token(request):
 
 class JWTSessionMiddleware(SessionMiddleware):
     def process_request(self, request):
+        
         request.user = SimpleLazyObject(lambda: get_user_from_token(request))
         request.user_account = getattr(request.user, "account", None)
         request.user_is_authenticated = getattr(request.user, "is_authenticated", False)
@@ -97,6 +99,8 @@ class JWTSessionMiddleware(SessionMiddleware):
                 "is_authenticated",
                 False,
             )
+
+        # rotate_token(request)
         return super().process_response(request, response)
 
     def process_exception(self, request, exception):
