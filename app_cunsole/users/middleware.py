@@ -35,8 +35,8 @@ class JWTSessionMiddleware(SessionMiddleware):
         print("Middleware User Id:", request.user_id)
         print("Middleware User Account:", request.user_account)
         print("Middleware User Authenticated:", request.user_is_authenticated)
-        print("Request User:", request.user.id)
-        print("User Account:", request.user.account)
+        # print("Request User:", request.user_id)
+        # print("User Account:", request.user.account)
 
 
         super().process_request(request)

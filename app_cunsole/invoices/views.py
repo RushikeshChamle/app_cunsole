@@ -331,8 +331,8 @@ def send_email_view(request):
 def get_customer_summary(request, customer_id):
     try:
         # Ensure the user is authenticated
-        if request.user.is_authenticated:
-            account = request.user.account
+        if request.user_is_authenticated:
+            account = request.user_account
 
             if not account:
                 return Response(
@@ -505,7 +505,7 @@ def get_customer_payments(request, customer_id):
 def invoice_details(request, invoice_id):
     try:
         # Check if the user is authenticated
-        if not request.user.is_authenticated:
+        if not request.user_is_authenticated:
             return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
         
         # Retrieve the invoice details

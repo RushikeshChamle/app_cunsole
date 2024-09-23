@@ -297,8 +297,8 @@ def get_email_triggers(request):
         account = request.user_account
         user = request.user
         # print("data of account" + account)
-        print("Account ID:", account.id)  # Assuming account is a model instance with an 'id' field
-        print("Account ID:", user.id)  # Assuming account is a model instance with an 'id' field
+        # print("Account ID:", account.id)  # Assuming account is a model instance with an 'id' field
+        # print("Account ID:", user.id)  # Assuming account is a model instance with an 'id' field
 
 
         if not account:
