@@ -142,6 +142,50 @@ def create_customer(request):
 
 
 
+@api_view(['GET'])
+def get_customer(request, customer_id):
+    """
+    Retrieve a customer by their ID.
+
+    This view retrieves a customer record by the provided customer ID. The customer must be associated
+    with the authenticated user's account.
+
+    Args:
+        request (Request): The HTTP request object.
+        customer_id (uuid.UUID): The UUID of the customer to retrieve.
+
+    Returns:
+        Response: A JSON response containing the customer data.
+                  If the customer is not found, returns a 404 Not Found error.
+                  If the user is not authenticated, returns a 401 Unauthorized error.
+    """
+    try:
+        if request.user_is_authenticated:
+            user = request.user_id
+            account = request.user_account
+            customer = Customers.objects.filter(account=account, id=customer_id).first()
+
+            if customer:
+                serializer = CustomerSerializer(customer)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response(
+                    {"error": "Customer not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        else:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+    except Exception as e:
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+
 
 # bulk create customers api
 
@@ -347,7 +391,7 @@ def get_email_trigger_by_id(request, trigger_id):
     if request.user_is_authenticated:
         try:
             # Retrieve the authenticated user
-            user = request.user
+            user = request.user_id
 
             # Retrieve the account associated with the authenticated user
             account = request.user_account

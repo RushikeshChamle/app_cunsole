@@ -1,6 +1,6 @@
 from django.urls import path
 
-from app_cunsole.customer.views import bulk_create_customers,get_customers_by_account,get_email_triggers, get_email_trigger_by_id, send_reminders_emails,create_email_trigger, test_email_trigger
+from app_cunsole.customer.views import bulk_create_customers,get_customer,get_customers_by_account,get_email_triggers, get_email_trigger_by_id, send_reminders_emails,create_email_trigger, test_email_trigger
 from app_cunsole.customer.views import create_customer
 from app_cunsole.invoices.views import get_customer_invoice_summary
 # from app_cunsole.invoices.views import get_customers_by_account
@@ -29,6 +29,9 @@ urlpatterns = [
     path('get_email_triggers/', get_email_triggers, name='get_email_triggers'),
     path('test_email_trigger/', test_email_trigger, name='test_email_trigger'),
     path('email_trigger/<uuid:trigger_id>/', get_email_trigger_by_id, name='get_email_trigger_by_id'),
+    path('get_customer/<uuid:customer_id>/', get_customer, name='get_customer'),
+
+
 ]
 
 
