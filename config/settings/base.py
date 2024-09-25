@@ -153,11 +153,12 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "app_cunsole.users.middleware.JWTSessionMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "app_cunsole.users.middleware.JWTSessionMiddleware",
+
 ]
 
 
@@ -176,31 +177,31 @@ MIDDLEWARE = [
 
 
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8000",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:8000",
+#     "http://localhost:3000",
+#     "http://127.0.0.1:3000",
+# ]
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:9090",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+# CSRF_TRUSTED_ORIGINS = [
+#     "http://localhost:9090",
+#     "http://localhost:3000",
+#     "http://127.0.0.1:3000",
+# ]
 
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = True
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
+# CORS_ALLOW_CREDENTIALS = True
+# CORS_ALLOW_ALL_ORIGINS = True
+# SESSION_COOKIE_SECURE = False
+# CSRF_COOKIE_SECURE = False
 
-CORS_ALLOW_METHODS = [
-    'GET',
-    'POST',
-    'PUT',
-    'PATCH',
-    'DELETE',
-    'OPTIONS',
-]
+# CORS_ALLOW_METHODS = [
+#     'GET',
+#     'POST',
+#     'PUT',
+#     'PATCH',
+#     'DELETE',
+#     'OPTIONS',
+# ]
 
 # CORS_ALLOW_HEADERS = [
 #     'accept',
@@ -408,7 +409,7 @@ SPECTACULAR_SETTINGS = {
 
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=300),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "AUTH_COOKIE": "access_token",  # Cookie name
     "REFRESH_COOKIE": "refresh_token",  # Cookie name for refresh token

@@ -35,7 +35,7 @@ from django.core.mail import EmailMessage
 import json
 
 
-@csrf_exempt
+# @csrf_exempt
 def create_invoice(request):
     if request.method == "POST":
         if request.user_is_authenticated:
@@ -155,37 +155,37 @@ def bulk_create_invoices(request):
 
 
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def get_customers_by_account(request):
-    try:
-        # Ensure the user is authenticated (Updated)
-        if request.user_is_authenticated:
-            user = request.user
-            account = request.user_account
+# @api_view(["GET"])
+# @permission_classes([IsAuthenticated])
+# def get_customers_by_account(request):
+#     try:
+#         # Ensure the user is authenticated (Updated)
+#         if request.user_is_authenticated:
+#             user = request.user
+#             account = request.user_account
 
-            if not account:
-                return Response(
-                    {"error": "User does not have an associated account"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+#             if not account:
+#                 return Response(
+#                     {"error": "User does not have an associated account"},
+#                     status=status.HTTP_400_BAD_REQUEST,
+#                 )
 
-            # Fetch customers for the user's account using ORM queries
-            account_customers = Customers.objects.filter(account_id=account.id)
+#             # Fetch customers for the user's account using ORM queries
+#             account_customers = Customers.objects.filter(account_id=account.id)
 
-            # Serialize the data
-            serializer = CustomerSerializer(account_customers, many=True)
+#             # Serialize the data
+#             serializer = CustomerSerializer(account_customers, many=True)
 
-            # Return the response
-            return Response({"customers": serializer.data}, status=status.HTTP_200_OK)
+#             # Return the response
+#             return Response({"customers": serializer.data}, status=status.HTTP_200_OK)
 
-        return Response(
-            {"error": "Authentication required"},
-            status=status.HTTP_401_UNAUTHORIZED,
-        )
+#         return Response(
+#             {"error": "Authentication required"},
+#             status=status.HTTP_401_UNAUTHORIZED,
+#         )
 
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#     except Exception as e:
+#         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -300,7 +300,7 @@ def get_user_account(request):
 
 
 
-@csrf_exempt
+# @csrf_exempt
 def send_email_view(request):
     if request.method == "POST":
         try:
@@ -331,8 +331,8 @@ def send_email_view(request):
 def get_customer_summary(request, customer_id):
     try:
         # Ensure the user is authenticated
-        if request.user.is_authenticated:
-            account = request.user.account
+        if request.user_is_authenticated:
+            account = request.user_account
 
             if not account:
                 return Response(
@@ -450,7 +450,7 @@ def add_payment(request):
 
 
 
-@csrf_exempt
+# @csrf_exempt
 @api_view(['GET'])
 def get_customer_payments(request, customer_id):
     """
@@ -505,7 +505,7 @@ def get_customer_payments(request, customer_id):
 def invoice_details(request, invoice_id):
     try:
         # Check if the user is authenticated
-        if not request.user.is_authenticated:
+        if not request.user_is_authenticated:
             return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
         
         # Retrieve the invoice details
@@ -572,46 +572,6 @@ def check_email_trigger(request, invoice_id):
 
 
 
-
-
-# @api_view(['GET'])
-# def check_email_trigger(request, invoice_id):
-#     try:
-#         invoice = Invoices.objects.get(id=invoice_id)
-#     except Invoices.DoesNotExist:
-#         return Response({'error': 'Invoice not found'}, status=404)
-
-#     # Serialize the invoice including email triggers
-#     serializer = InvoiceWithTriggersSerializer(invoice)
-#     invoice_data = serializer.data
-
-#     triggers = EmailTrigger.objects.filter(account=invoice.account, isactive=True)
-#     active_triggers = []
-
-#     for trigger in triggers:
-#         if trigger.condition_type == 0:  # Reminder before due
-#             trigger_date = invoice.duedate - timedelta(days=trigger.days_offset)
-#         elif trigger.condition_type == 1:  # Reminder on due
-#             trigger_date = invoice.duedate
-#         elif trigger.condition_type == 2:  # Reminder after due
-#             trigger_date = invoice.duedate + timedelta(days=trigger.days_offset)
-#         else:
-#             trigger_date = invoice.duedate  # Default case
-
-#         # Calculate next alert date
-#         next_alert_date = trigger_date if timezone.now() >= trigger_date else None
-        
-#         active_triggers.append({
-#             'trigger_id': trigger.id,
-#             'trigger_name': trigger.name,
-#             'condition_type': trigger.get_condition_type_display(),
-#             'email_subject': trigger.email_subject,
-#             'email_body': trigger.email_body,
-#             'trigger_date': trigger_date,
-#             'next_alert_date': next_alert_date
-#         })
-
-#     return Response({'invoice': invoice_data, 'active_triggers': active_triggers})
 def format_email_content(template, context):
     """
     Replace placeholders in the email template with actual data.
