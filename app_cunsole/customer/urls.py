@@ -1,6 +1,6 @@
 from django.urls import path
 
-from app_cunsole.customer.views import bulk_create_customers,get_customer,get_customers_by_account,get_email_triggers, get_email_trigger_by_id, send_reminders_emails,create_email_trigger, test_email_trigger
+from app_cunsole.customer.views import bulk_create_customers,get_entire_account_invoice_reminders,get_all_invoice_reminders,get_invoice_with_all_reminders,get_account_invoice_reminders, get_next_invoice_reminder,get_customer,get_customers_by_account,get_email_triggers, get_email_trigger_by_id, send_reminders_emails,create_email_trigger, test_email_trigger
 from app_cunsole.customer.views import create_customer
 from app_cunsole.invoices.views import get_customer_invoice_summary
 # from app_cunsole.invoices.views import get_customers_by_account
@@ -26,13 +26,60 @@ urlpatterns = [
     path('send_reminders_emails/',send_reminders_emails, name='send_reminders_emails'),
     path('create_email_trigger/', create_email_trigger, name='create_email_trigger'),
     # path('get_email_triggers/', get_email_triggers, name='get_email_triggers'),
+
+    #  # Endpoint to retrieve all email triggers associated with the user account
+    # path('get_email_triggers/', get_email_triggers, name='get_email_triggers'),
+
+    # path('test_email_trigger/', test_email_trigger, name='test_email_trigger'),
+
+    # # Endpoint to retrieve a specific email trigger by its unique identifier
+    # path('email_trigger/<uuid:trigger_id>/', get_email_trigger_by_id, name='get_email_trigger_by_id'),
+
+    # path('get_customer/<uuid:customer_id>/', get_customer, name='get_customer'),
+
+    # # Endpoint to retrieve the next reminder for a specific invoice by its ID
+    # path('/invoices/<int:invoice_id>/next-reminder/', get_next_invoice_reminder, name='next_invoice_reminder'),
+
+
+    
+    # path('/invoices/<int:invoice_id>/next-reminders/', get_invoice_with_all_reminders, name='get_invoice_with_all_reminders'),
+    # path('/invoices/<int:invoice_id>/all-reminders/', get_all_invoice_reminders, name='get_all_invoice_reminders'),
+
+
+    # path('account/invoice-reminders/', get_account_invoice_reminders, name='get_account_invoice_reminders'),
+    # path('account/invoice-reminders-all/', get_entire_account_invoice_reminders, name='get_entire_account_invoice_reminders'),
+
+
+    # Endpoint to retrieve all email triggers associated with the user account
     path('get_email_triggers/', get_email_triggers, name='get_email_triggers'),
+
+    # Endpoint to manually test sending an email using a specified email trigger
     path('test_email_trigger/', test_email_trigger, name='test_email_trigger'),
+
+    # Endpoint to retrieve a specific email trigger by its unique identifier
     path('email_trigger/<uuid:trigger_id>/', get_email_trigger_by_id, name='get_email_trigger_by_id'),
+
+    # Endpoint to retrieve customer details using the customer's unique identifier
     path('get_customer/<uuid:customer_id>/', get_customer, name='get_customer'),
+
+    # Endpoint to retrieve the next reminder for a specific invoice by its ID without dynamic fields
+    path('/invoices/<int:invoice_id>/next-reminder/', get_next_invoice_reminder, name='next_invoice_reminder'),
+
+    # Endpoint to retrieve all upcoming reminders for a specific invoice by its ID with dynamic fields
+    path('/invoices/<int:invoice_id>/dynamite-next-reminders-/', get_invoice_with_all_reminders, name='get_invoice_with_all_reminders'),
+
+    # Endpoint to retrieve all reminders (both past and future) for a specific invoice by its ID
+    path('/invoices/<int:invoice_id>/all-reminders/', get_all_invoice_reminders, name='get_all_invoice_reminders'),
+
+    # Endpoint to retrieve invoice reminders for the user's associated account
+    path('account/invoice-reminders/', get_account_invoice_reminders, name='get_account_invoice_reminders'),
+
+    # Endpoint to retrieve all invoice reminders (including past) for the user's associated account
+    path('account/invoice-reminders-all/', get_entire_account_invoice_reminders, name='get_entire_account_invoice_reminders'),
+
+
 
 
 ]
 
 
-# localhost:8000/customers/create_customer
