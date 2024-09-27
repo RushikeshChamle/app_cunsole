@@ -26,7 +26,7 @@ from .models import User
 from .serializers import AccountSerializer
 from .serializers import CustomTokenObtainPairSerializer
 from .serializers import UserCreationSerializer
-from .serializers import UserdataSerializer
+from .serializers import UserdataSerializer, UserSerializer
 
 
 SECRET_KEY = "django-insecure-3t!a&dtryebf_9n(zhm&b#%(!nqc67hisav6hy02faz_ztb=_$"  # Replace with your actual secret key
@@ -214,3 +214,50 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             secure=settings.SIMPLE_JWT.get("AUTH_COOKIE_SECURE", False),
         )
         return response
+    
+
+
+@api_view(["GET"])
+def get_accounts_and_users(request):
+    """
+    Retrieve all accounts and users linked to the authenticated user's account.
+
+    This view requires that the user is authenticated. It fetches all accounts and users associated
+    with the authenticated user's account. The data is serialized and returned in the response.
+
+    Returns:
+        Response: A JSON response containing the accounts and users data and a status code.
+                  If authentication is not provided, returns a 401 Unauthorized error.
+    """
+    try:
+        if request.user_is_authenticated:
+            user = request.user_id
+            account = request.user_account  # Assuming each user is linked to an account
+
+            if not account:
+                return Response(
+                    {"error": "User does not have an associated account."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Fetch accounts and users based on the authenticated user's account
+            accounts = Account.objects.filter(id=account.id)
+            users = User.objects.filter(account=account)
+
+            # Serialize the data
+            account_serializer = AccountSerializer(accounts, many=True)
+            user_serializer = UserSerializer(users, many=True)
+
+            # Return the response
+            return Response({
+                "accounts": account_serializer.data,
+                "users": user_serializer.data
+            }, status=status.HTTP_200_OK)
+
+        return Response(
+            {"error": "Authentication credentials were not provided."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

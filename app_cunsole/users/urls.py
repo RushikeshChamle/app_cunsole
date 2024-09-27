@@ -8,7 +8,7 @@ from .views import create_user
 from .views import signup
 from .views import user_detail_view
 from .views import user_redirect_view
-from .views import user_update_view
+from .views import user_update_view, get_accounts_and_users
 
 app_name = "users"
 
@@ -21,5 +21,7 @@ urlpatterns = [
     path("create_user/", create_user, name="create_user"),
     path("create_account/", create_account, name="create_account"),
     path("signin/", CustomTokenObtainPairView.as_view(), name="signin"),
+    path('accounts_users/', get_accounts_and_users, name='accounts_users'),
+
     # path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 ]
