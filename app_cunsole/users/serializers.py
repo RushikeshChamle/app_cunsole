@@ -12,6 +12,8 @@ class UserSerializer(serializers.ModelSerializer):
         fields = "__all__"  # Include all fields in the serialized data
 
 
+
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)

@@ -271,13 +271,6 @@ def bulk_create_customers(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-
-
-
-
-
-
-
 @api_view(["POST"])
 def create_email_trigger(request):
     try:
@@ -321,8 +314,6 @@ def create_email_trigger(request):
     
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 
 
 @api_view(["GET"])
@@ -784,6 +775,10 @@ def get_invoice_with_all_reminders(request, invoice_id):
             "invoice_status": invoice.get_status_display()
         }
 
+
+
+
+
         # Loop through each trigger and calculate the reminder dates
         for trigger in triggers:
             if trigger.condition_type == 0:  # Before Due Date
@@ -900,6 +895,7 @@ def get_account_invoice_reminders(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+
 
 
 
