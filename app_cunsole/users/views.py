@@ -68,6 +68,7 @@ class UserRedirectView(LoginRequiredMixin, RedirectView):
 user_redirect_view = UserRedirectView.as_view()
 
 
+
 # @csrf_exempt
 @api_view(["POST"])
 def create_account(request):

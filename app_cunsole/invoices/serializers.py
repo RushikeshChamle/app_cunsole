@@ -74,3 +74,30 @@ class InvoiceWithTriggersSerializer(serializers.ModelSerializer):
     def get_email_triggers(self, obj):
         triggers = EmailTrigger.objects.filter(account=obj.account, isactive=True)
         return EmailTriggerDetailSerializer(triggers, many=True).data
+    
+
+from .models import Invoices
+from django.db.models import Sum
+from django.utils import timezone
+
+
+class CustomerDueSerializer(serializers.ModelSerializer):
+    due_amount = serializers.SerializerMethodField()
+    due_in_days = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Customers
+        fields = ['name', 'due_amount', 'due_in_days']
+
+    def get_due_amount(self, obj):
+        # Sum of all unpaid amounts in invoices for this customer
+        total_due = Invoices.objects.filter(customerid=obj.id, status=0).aggregate(due_sum=Sum('total_amount'))['due_sum'] or 0
+        return total_due
+
+    def get_due_in_days(self, obj):
+        # Get the shortest due date for unpaid invoices
+        nearest_due_date = Invoices.objects.filter(customerid=obj.id, status=0).order_by('duedate').first()
+        if nearest_due_date:
+            delta = nearest_due_date.duedate - timezone.now()
+            return delta.days
+        return None
