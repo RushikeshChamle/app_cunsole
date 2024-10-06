@@ -1,0 +1,4 @@
+postgres://user:pass@localhost/dbname
+
+
+postgres://postgres:cunsole#databasePa$$23@localhost/cunsole
