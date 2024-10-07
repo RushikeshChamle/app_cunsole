@@ -27,7 +27,7 @@ urlpatterns = [
     path('create_email_trigger/', create_email_trigger, name='create_email_trigger'),
    
 
-    # Endpoint to retrieve all email triggers associated with the user account
+    # Endpoint to retrieve all email triggers associated with the user account creation
     path('get_email_triggers/', get_email_triggers, name='get_email_triggers'),
 
     # Endpoint to manually test sending an email using a specified email trigger
