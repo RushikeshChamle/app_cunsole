@@ -17,9 +17,9 @@ urlpatterns = [
     path("customers/", get_customers_by_account, name="get_customers_by_account"),
     
     path(
-        "cutomerinvoices/",
+        "customerinvoices/",
         get_customer_invoice_summary,
-        name="get_customer_invoice_summary",
+        name="customerinvoices",
     ),
     path("get_user_account/", get_user_account, name="get_user_account"),
     path("create_customer/",create_customer,name="create_customer"),  # Endpoint for creating a new customer

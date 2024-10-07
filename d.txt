@@ -6,3 +6,69 @@ postgres://postgres:cunsole#databasePa$$23@localhost/cunsole
 
 
 gunicorn --bind 0.0.0.0:8000 app_cunsole.wsgi
+
+
+
+
+[Unit]
+Description=gunicorn daemon
+Requires=gunicorn.socket
+After=network.target
+
+[Service]
+User=ubunto
+Group=www-data
+WorkingDirectory=/home/harry/projectdir
+ExecStart=/home/harry/projectdir/env/bin/gunicorn \
+          --access-logfile - \
+          --workers 3 \
+          --bind unix:/run/gunicorn.sock \
+          textutils.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
+
+
+
+
+[Unit]
+Description=gunicorn daemon
+Requires=gunicorn.socket
+After=network.target
+
+[Service]
+User=ubuntu  # Your EC2 user
+Group=www-data
+WorkingDirectory=/home/ubuntu/app_cunsole  # Your app's working directory
+ExecStart=/home/ubuntu/app_cunsole/.venv/bin/gunicorn \  # Updated to the correct gunicorn path
+          --access-logfile - \
+          --workers 3 \
+          --bind unix:/run/gunicorn.sock \
+          config.wsgi:application  # Your WSGI application path
+
+[Install]
+WantedBy=multi-user.target
+
+
+
+
+
+
+server {
+    listen 80;
+    server_name app.cunsole.com;
+
+    location = /favicon.ico { 
+        access_log off; 
+        log_not_found off; 
+    }
+
+    location /static/ {
+        root /home/ubuntu/app_cunsole;  # Updated to your application's static files directory
+    }
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/run/gunicorn.sock;  # Ensuring it matches the Gunicorn socket path
+    }
+}
