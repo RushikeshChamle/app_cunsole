@@ -316,6 +316,127 @@ def create_email_trigger(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
+# @api_view(["PUT"])
+# def update_email_trigger(request, trigger_id):
+#     try:
+#         if request.user_is_authenticated:
+#             user = request.user_id
+#             account = request.user_account
+
+#             if not account:
+#                 return Response(
+#                     {"error": "User does not have an associated account"},
+#                     status=status.HTTP_400_BAD_REQUEST,
+#                 )
+
+#             # Get the existing email trigger
+#             try:
+#                 email_trigger = EmailTrigger.objects.get(id=trigger_id, account=account)
+#             except EmailTrigger.DoesNotExist:
+#                 return Response(
+#                     {"error": "Email trigger not found"},
+#                     status=status.HTTP_404_NOT_FOUND,
+#                 )
+
+#             # Prepare data for serializer
+#             data = request.data.copy()
+#             data['user'] = user.id
+#             data['account'] = account.id
+
+#             print("User ID API:", user.id)
+#             print("Account ID API:", account.id)
+#             print("Updated Data API:", data)
+
+#             # Initialize serializer with existing instance and new data
+#             serializer = EmailTriggerSerializer(email_trigger, data=data, partial=True)
+
+#             print("Serializer API:", serializer)
+
+#             # Validate and save
+#             if serializer.is_valid():
+#                 serializer.save()
+#                 return Response(serializer.data, status=status.HTTP_200_OK)
+
+#             # Log validation errors
+#             print("Serializer Errors:", serializer.errors)
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#         return Response(
+#             {"error": "Authentication required"},
+#             status=status.HTTP_401_UNAUTHORIZED,
+#         )
+    
+#     except Exception as e:
+#         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["PUT"])
+def update_email_trigger(request, trigger_id):
+    try:
+        if request.user_is_authenticated:
+            user = request.user_id  # Check if this is an int or an object
+            account = request.user_account  # Check if this is an int or an object
+
+            # Ensure the account exists
+            if not account:
+                return Response(
+                    {"error": "User does not have an associated account"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Get the existing email trigger
+            try:
+                email_trigger = EmailTrigger.objects.get(id=trigger_id, account=account)
+            except EmailTrigger.DoesNotExist:
+                return Response(
+                    {"error": "Email trigger not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            # Prepare data for serializer
+            data = request.data.copy()
+
+            # Assign user and account correctly based on their type (int or object)
+            if isinstance(user, int):
+                data['user'] = user  # If user is already an ID
+            else:
+                data['user'] = user.id  # If user is an object
+
+            if isinstance(account, int):
+                data['account'] = account  # If account is already an ID
+            else:
+                data['account'] = account.id  # If account is an object
+
+            print("User ID API:", data['user'])
+            print("Account ID API:", data['account'])
+            print("Updated Data API:", data)
+
+            # Initialize serializer with existing instance and new data
+            serializer = EmailTriggerSerializer(email_trigger, data=data, partial=True)
+
+            print("Serializer API:", serializer)
+
+            # Validate and save
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+            # Log validation errors
+            print("Serializer Errors:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {"error": "Authentication required"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+    
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
 @api_view(["GET"])
 def get_email_triggers(request):
     """
@@ -515,6 +636,7 @@ def send_reminders_emails(request):
         })
     else:
         return JsonResponse({"error": "Invalid request method"}, status=405)
+
 
 
 

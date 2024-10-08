@@ -1,6 +1,6 @@
 from django.urls import path
 
-from app_cunsole.customer.views import bulk_create_customers,get_entire_account_invoice_reminders,get_all_invoice_reminders,get_invoice_with_all_reminders,get_account_invoice_reminders, get_next_invoice_reminder,get_customer,get_customers_by_account,get_email_triggers, get_email_trigger_by_id, send_reminders_emails,create_email_trigger, test_email_trigger
+from app_cunsole.customer.views import bulk_create_customers,update_email_trigger,get_entire_account_invoice_reminders,get_all_invoice_reminders,get_invoice_with_all_reminders,get_account_invoice_reminders, get_next_invoice_reminder,get_customer,get_customers_by_account,get_email_triggers, get_email_trigger_by_id, send_reminders_emails,create_email_trigger, test_email_trigger
 from app_cunsole.customer.views import create_customer
 from app_cunsole.invoices.views import get_customer_invoice_summary
 # from app_cunsole.invoices.views import get_customers_by_account
@@ -25,8 +25,10 @@ urlpatterns = [
     path("create_customer/",create_customer,name="create_customer"),  # Endpoint for creating a new customer
     path('send_reminders_emails/',send_reminders_emails, name='send_reminders_emails'),
     path('create_email_trigger/', create_email_trigger, name='create_email_trigger'),
-   
 
+    path('update_email_trigger/<uuid:trigger_id>/', update_email_trigger, name='update_email_trigger'),
+
+   
     # Endpoint to retrieve all email triggers associated with the user account creation
     path('get_email_triggers/', get_email_triggers, name='get_email_triggers'),
 
