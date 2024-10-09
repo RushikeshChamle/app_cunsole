@@ -142,6 +142,100 @@ def create_customer(request):
 
 
 
+# @api_view(['GET'])
+# def get_active_customers_by_account(request):
+
+#         # Check if the user is authenticated
+#         # if request.user_is_authenticated:
+#             user = request.user_id
+#             account = request.user_account
+
+#             if not account:
+#                 return Response(
+#                     {"error": "User does not have an associated account"},
+#                     status=status.HTTP_400_BAD_REQUEST,
+#                 )
+
+#             # Handle GET request - Retrieve active customers by account
+#             if request.method == 'GET':
+#                 active_customers = Customers.objects.filter(account=account, isactive=True)
+#                 serializer = CustomerSerializer(active_customers, many=True)
+#                 return Response(serializer.data, status=status.HTTP_200_OK)
+
+#             # Handle POST request - Create a new customer
+#             # elif request.method == 'POST':
+#             #     # Prepare data for serialization
+#             #     data = request.data.copy()
+#             #     data['user'] = user  # Add the user ID from the token
+#             #     data['account'] = account.id  # Add the account ID
+
+#             #     # Initialize the serializer with the request data
+#             #     serializer = CustomerSerializer(data=data)
+
+#             #     # Validate and save the customer data
+#             #     if serializer.is_valid():
+#             #         customer = serializer.save()
+#             #         return Response(
+#             #             {
+#             #                 "success": "Customer created successfully",
+#             #                 "customer": serializer.data,
+#             #             },
+#             #             status=status.HTTP_201_CREATED,
+#             #         )
+
+#             #     # If the validation fails, return errors
+#             #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#         # If the user is not authenticated, return a 401 error
+#         # return Response(
+#         #     {"error": "Authentication required"},
+#         #     status=status.HTTP_401_UNAUTHORIZED,
+#         # )
+
+#     # Catch any unexpected exceptions and return a 500 error
+#     # except Exception as e:
+#         # return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+def get_active_customers_by_account(request):
+    try:
+        # Ensure the user is authenticated
+        if request.user_is_authenticated:
+            account = request.user_account
+
+            if not account:
+                return Response(
+                    {"error": "User does not have an associated account"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Fetch active customers based on the account and isactive = True
+            customers_list = Customers.objects.filter(account_id=account.id, isactive=True)
+
+            # Check if any customers exist for the account
+            if not customers_list.exists():
+                return Response(
+                    {"error": "No active customers found for the account"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            # Serialize the customer data
+            serializer = CustomerSerializer(customers_list, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # Return an error if the user is not authenticated
+        return Response(
+            {"error": "Authentication required"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    # Catch any unexpected exceptions and return a 500 error
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
 @api_view(['GET'])
 def get_customer(request, customer_id):
     """
@@ -531,12 +625,12 @@ def get_email_trigger_by_id(request, trigger_id):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
 def get_customers_by_account(request):
     try:
         # Ensure the user is authenticated (Updated)
+
         if request.user_is_authenticated:
-            user = request.user
+            user = request.user_id
             account = request.user_account
 
             if not account:
