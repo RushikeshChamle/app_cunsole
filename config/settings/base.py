@@ -322,6 +322,14 @@ ANYMAIL = {
     },
 }
 
+
+AWS_REGION = 'ap-south-1'  # Replace with your desired AWS region
+AWS_ACCESS_KEY_ID = 'AKIA6ODUZKJ7WYST4VRM'  # Replace with your AWS access key ID
+AWS_SECRET_ACCESS_KEY = 'PjsH2Ygxm74QJoZ6VAs734OJxvQUFtm7F/SBHNYD'  # Replace with your AWS secret access key
+
+
+
+
 # ADMIN
 # ------------------------------------------------------------------------------
 # Django Admin URL.

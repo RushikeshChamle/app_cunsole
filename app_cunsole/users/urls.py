@@ -12,6 +12,8 @@ from .views import user_update_view, get_accounts_and_users, email_provider_list
 from .views import user_update_view, email_configuration_list, email_configuration_detail, email_verification_log_list, email_verification_log_detail
 from . import views
 from .views import generate_dkim_keys
+from .views import add_domain, check_verification_status, get_dns_records
+
 
 app_name = "users"
 
@@ -57,12 +59,17 @@ urlpatterns = [
     # GlobalEmailSettings URL
     path('global-settings/', views.global_email_settings, name='global-email-settings'),
 
+    path('email-configurations/<int:pk>/update-spf/', views.update_spf_record, name='update-spf-record'),
 
 
     path('configurations/<int:pk>/dmarc/', views.update_dmarc_settings, name='update-dmarc-settings'),
     path('configurations/<int:pk>/stats/', views.get_sending_stats, name='get-sending-stats'),
     path('configurations/<int:pk>/send/', views.send_email, name='send-email'),
     path('configurations/<int:pk>/verify-and-test/', views.verify_and_test_email, name='verify-and-test-email'),
+
+    path('domains/add/', add_domain, name='add_domain'),
+    path('domains/status/<int:domain_id>/', check_verification_status, name='check_verification_status'),
+    path('domains/records/<int:domain_id>/', get_dns_records, name='get_dns_records'),
 
 
 

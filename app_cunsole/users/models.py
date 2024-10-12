@@ -143,6 +143,7 @@ class EmailConfiguration(models.Model):
     dkim_public_key = models.TextField(blank=True, null=True)
     dkim_private_key = models.TextField(blank=True, null=True)
     spf_record = models.TextField(blank=True, null=True)
+    is_spf_verified = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=False)
     is_disabled = models.BooleanField(default=False)  # 0 for enabled, 1 for disabled
     created_at = models.DateTimeField(auto_now_add=True)
@@ -161,6 +162,17 @@ class EmailConfiguration(models.Model):
 
     class Meta:
         db_table = "email_configuration"
+
+    def generate_spf_record(self):
+        """Generate SPF record based on the email provider's SMTP server."""
+        if self.email_provider:
+            return f"v=spf1 include:{self.email_provider.smtp_server} -all"
+        return None
+
+    def save(self, *args, **kwargs):
+        if not self.spf_record:
+            self.spf_record = self.generate_spf_record()
+        super().save(*args, **kwargs)
 
 
     def generate_dkim_record(self):
@@ -226,3 +238,48 @@ class GlobalEmailSettings(models.Model):
 
     def __str__(self):
         return self.default_sender_email
+    
+
+
+class Domainconfig(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=255, unique=True)  # Domain name
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    account = models.ForeignKey(Account, on_delete=models.CASCADE)  # Links to the associated Account
+    mail_from_domain = models.CharField(max_length=255)  # Custom MAIL FROM domain
+    spf_record = models.TextField()  # SPF record for the domain
+    dmarc_record = models.TextField()  # DMARC record for the domain
+    verification_status = models.BooleanField(default=False)  # Verification status
+    created_at = models.DateTimeField(auto_now_add=True)  # When the domain was added
+    updated_at = models.DateTimeField(auto_now=True)  # When the domain was last updated
+    is_disabled = models.BooleanField(default=False)  # 0 for enabled, 1 for disabled
+
+    class Meta:
+        db_table = "Domainconfig"
+
+    def __str__(self):
+        return self.name
+
+
+
+class DNSRecord(models.Model):
+    RECORD_TYPES = (
+        ('CNAME', 'CNAME'),
+        ('MX', 'MX'),
+        ('TXT', 'TXT'),
+        ('DKIM', 'DKIM'),  # Adding DKIM as a record type
+    )
+    id = models.AutoField(primary_key=True)
+    domainconfig = models.ForeignKey(Domainconfig, on_delete=models.CASCADE)  # Link to the Domain
+    record_type = models.CharField(max_length=5, choices=RECORD_TYPES)  # Type of DNS record
+    name = models.CharField(max_length=255)  # The name of the DNS record
+    value = models.TextField()  # The value of the DNS record
+    selector = models.CharField(max_length=255, null=True, blank=True)  # DKIM selector (optional)
+    created_at = models.DateTimeField(auto_now_add=True)  # When the record was created
+    updated_at = models.DateTimeField(auto_now=True)  # When the record was last updated
+
+    class Meta:
+        db_table = "DNSRecord"
+
+    def __str__(self):
+        return self.name

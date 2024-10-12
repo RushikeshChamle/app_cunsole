@@ -41,7 +41,8 @@ from .models import EmailProvider, EmailConfiguration, EmailVerificationLog, Glo
 from .serializers import EmailProviderSerializer, EmailConfigurationSerializer, EmailVerificationLogSerializer, GlobalEmailSettingsSerializer
 from .utils import verify_dns_records, generate_dkim_keys
 from .utils import verify_dns_records, verify_dmarc_record, send_test_email
-
+from .models import EmailConfiguration
+from .utils import verify_spf_record
 
 
 
@@ -553,6 +554,70 @@ def generate_dkim_keys_view(request, pk):
     return Response({'message': 'DKIM keys generated successfully'})
 
 
+# @api_view(['POST'])
+# def generate_dkim_keys_view(request, pk):
+#     """
+#     Generate DKIM keys for a specific email configuration.
+
+#     Generate and assign DKIM keys for a specific email configuration.
+
+#     POST:
+#     - Generates DKIM private and public keys.
+#     - Assigns the keys to the email configuration with the given `pk`.
+#     - Saves the updated configuration and returns a success message along with the DKIM record.
+
+#     """
+#     configuration = get_object_or_404(EmailConfiguration, pk=pk)
+#     private_key, public_key = generate_dkim_keys()
+
+#     # Assign the keys to the email configuration
+#     configuration.dkim_private_key = private_key
+#     configuration.dkim_public_key = public_key
+#     configuration.save()
+
+#     # Generate the DKIM record
+#     dkim_record = f"{configuration.dkim_selector}._domainkey.{configuration.domain_name} IN TXT \"v=DKIM1; k=rsa; p={public_key}\""
+
+#     return Response({
+#         'message': 'DKIM keys generated successfully',
+#         'dkim_selector': configuration.dkim_selector,
+#         'dkim_public_key': public_key,
+#         'dkim_record': dkim_record  # Return the formatted DKIM record
+#     })
+
+
+# @api_view(['POST'])
+# def generate_dkim_keys_view(request, pk):
+#     """
+#     Generate DKIM keys for a specific email configuration.
+
+#     Generate and assign DKIM keys for a specific email configuration.
+
+#     POST:
+#     - Generates DKIM private and public keys.
+#     - Assigns the keys to the email configuration with the given `pk`.
+#     - Saves the updated configuration and returns a success message along with the DKIM record.
+
+#     """
+#     configuration = get_object_or_404(EmailConfiguration, pk=pk)
+#     private_key, public_key = generate_dkim_keys()
+
+#     # Assign the keys to the email configuration
+#     configuration.dkim_private_key = private_key
+#     configuration.dkim_public_key = public_key
+#     configuration.save()
+
+#     # Generate the DKIM record
+#     dkim_record = f"{configuration.dkim_selector}._domainkey.{configuration.domain_name} IN TXT \"v=DKIM1; k=rsa; p={public_key}\""
+
+#     return Response({
+#         'message': 'DKIM keys generated successfully',
+#         'dkim_selector': configuration.dkim_selector,
+#         'dkim_public_key': public_key,
+#         'dkim_record': dkim_record  # Return the formatted DKIM record
+#     })
+
+
 
 @api_view(['POST'])
 def verify_dns_records_view(request, pk):
@@ -765,6 +830,25 @@ def send_email(request, pk):
 
 
 
+@api_view(['POST'])
+def update_spf_record(request, pk):
+    try:
+        config = EmailConfiguration.objects.get(pk=pk)
+    except EmailConfiguration.DoesNotExist:
+        return Response({'error': 'Email configuration not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    config.spf_record = config.generate_spf_record()
+    config.save()
+
+    verification_result = verify_spf_record(config)
+    
+    return Response({
+        'spf_record': config.spf_record,
+        'is_verified': verification_result == 'Valid',
+        'verification_result': verification_result
+    })
+
+
 
 
 @api_view(['POST'])
@@ -818,3 +902,130 @@ def verify_and_test_email(request, pk):
             'dns_results': dns_results,
             'dmarc_verified': dmarc_verified
         }, status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+
+from .models import Domainconfig, DNSRecord
+from .utils import add_domain_to_ses, get_verification_status, generate_dns_records
+
+
+
+import logging
+from django.contrib.auth.models import User
+from .models import Account, Domainconfig, DNSRecord
+from .utils import add_domain_to_ses, generate_dns_records
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+
+
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+logger = logging.getLogger(__name__)
+
+
+@api_view(['POST'])
+def add_domain(request):
+    try:
+        domain = request.data.get('domain')
+        if not domain:
+            logger.warning("Domain is required but not provided.")
+            return Response({'error': 'Domain is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Set user and account to 1
+        user_id = 1
+        account_id = 1
+
+        # Fetch the user and account from the database
+        user = User.objects.get(id=user_id)  # Use custom User model
+        account = Account.objects.get(id=account_id)  # Fetch account with ID 1
+
+        # Add domain to SES
+        ses_result = add_domain_to_ses(domain)
+        if not ses_result:
+            logger.error(f"Failed to add domain to SES for {domain}. SES result: {ses_result}")
+            return Response({'error': 'Failed to add domain to SES'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Create Domainconfig
+        domain_config = Domainconfig.objects.create(
+            name=domain,
+            user=user,
+            account=account,
+            mail_from_domain=ses_result['mail_from_domain'],
+            spf_record="v=spf1 include:amazonses.com ~all",
+            dmarc_record="v=DMARC1; p=none;"
+        )
+
+        # Generate and save DNS records
+        dns_records = generate_dns_records(domain, ses_result['dkim_tokens'], ses_result['mail_from_domain'])
+        for record in dns_records:
+            DNSRecord.objects.create(
+                domainconfig=domain_config,
+                record_type=record['record_type'],
+                name=record['name'],
+                value=record['value'],
+                selector=record.get('selector')
+            )
+
+        logger.info(f"Domain added successfully: {domain}")
+        return Response({
+            'message': 'Domain added successfully',
+            'domain_id': domain_config.id
+        }, status=status.HTTP_201_CREATED)
+
+    except User.DoesNotExist:
+        logger.error(f"User with ID {user_id} does not exist.")
+        return Response({'error': 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+    except Account.DoesNotExist:
+        logger.error(f"Account with ID {account_id} does not exist.")
+        return Response({'error': 'Account does not exist'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        return Response({'error': 'An unexpected error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+
+@api_view(['GET'])
+def check_verification_status(request, domain_id):
+    try:
+        domain_config = Domainconfig.objects.get(id=domain_id)
+    except Domainconfig.DoesNotExist:
+        return Response({'error': 'Domain configuration not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    verification_status = get_verification_status(domain_config.name)
+    if verification_status == 'Success':
+        domain_config.verification_status = True
+        domain_config.save()
+        return Response({'status': 'Verified'})
+    elif verification_status == 'Pending':
+        return Response({'status': 'Pending'})
+    else:
+        return Response({'status': 'Failed'}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def get_dns_records(request, domain_id):
+    try:
+        domain_config = Domainconfig.objects.get(id=domain_id)
+    except Domainconfig.DoesNotExist:
+        return Response({'error': 'Domain configuration not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    dns_records = DNSRecord.objects.filter(domainconfig=domain_config)
+    records_data = [
+        {
+            'record_type': record.record_type,
+            'name': record.name,
+            'value': record.value,
+            'selector': record.selector
+        } for record in dns_records
+    ]
+
+    return Response({
+        'domain': domain_config.name,
+        'dns_records': records_data
+    })
