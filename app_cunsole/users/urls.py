@@ -10,8 +10,8 @@ from .views import user_detail_view
 from .views import user_redirect_view
 from .views import user_update_view, get_accounts_and_users, email_provider_list, email_provider_detail
 from .views import user_update_view, email_configuration_list, email_configuration_detail, email_verification_log_list, email_verification_log_detail
-from .views import generate_dkim_record
 from . import views
+from .views import generate_dkim_keys
 
 app_name = "users"
 

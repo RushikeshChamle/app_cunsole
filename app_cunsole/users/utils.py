@@ -2,7 +2,8 @@ import dns.resolver
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from django.utils import timezone
-from .models import SendingStats
+from .models import SendingStats, EmailConfiguration
+
 
 
 
