@@ -4,6 +4,8 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from app_cunsole.customer.models import Account
 
 from .models import User
+from rest_framework import serializers
+from .models import EmailProvider, EmailConfiguration, EmailVerificationLog
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -82,3 +84,32 @@ class UserCreationSerializer(serializers.Serializer):
     name = serializers.CharField(required=False)
     contact = serializers.CharField(required=False, max_length=15)
     account_id = serializers.IntegerField()
+
+
+
+# serializers.py
+
+
+
+from rest_framework import serializers
+from .models import EmailProvider, EmailConfiguration, EmailVerificationLog, GlobalEmailSettings
+
+class EmailProviderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailProvider
+        fields = '__all__'
+
+class EmailConfigurationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailConfiguration
+        fields = '__all__'
+
+class EmailVerificationLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailVerificationLog
+        fields = '__all__'
+
+class GlobalEmailSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GlobalEmailSettings
+        fields = '__all__'

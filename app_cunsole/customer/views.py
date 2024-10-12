@@ -3,6 +3,9 @@ import json
 import jwt
 from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
+from django.conf import settings
+
+# from config.settings.base import settings
 
 from rest_framework.permissions import IsAuthenticated
 from app_cunsole.customer.models import Customers
