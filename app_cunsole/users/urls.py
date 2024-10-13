@@ -70,8 +70,7 @@ urlpatterns = [
     path('domains/add/', add_domain, name='add_domain'),
     path('domains/status/<int:domain_id>/', check_verification_status, name='check_verification_status'),
     path('domains/records/<int:domain_id>/', get_dns_records, name='get_dns_records'),
-
-
+    path('get_account_domains/', views.get_account_domains, name='domainconfig-list'),
 
 
 

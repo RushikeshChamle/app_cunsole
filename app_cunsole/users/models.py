@@ -241,21 +241,62 @@ class GlobalEmailSettings(models.Model):
     
 
 
+# class Domainconfig(models.Model):
+#     id = models.AutoField(primary_key=True)
+#     name = models.CharField(max_length=255, unique=True)  # Domain name
+#     user = models.ForeignKey(User, on_delete=models.CASCADE)
+#     account = models.ForeignKey(Account, on_delete=models.CASCADE)  # Links to the associated Account
+#     mail_from_domain = models.CharField(max_length=255)  # Custom MAIL FROM domain
+#     spf_record = models.TextField()  # SPF record for the domain
+#     dmarc_record = models.TextField()  # DMARC record for the domain
+#     verification_status = models.BooleanField(default=False)  # Verification status
+#     created_at = models.DateTimeField(auto_now_add=True)  # When the domain was added
+#     updated_at = models.DateTimeField(auto_now=True)  # When the domain was last updated
+#     is_disabled = models.BooleanField(default=False)  # 0 for enabled, 1 for disabled
+
+#     class Meta:
+#         db_table = "Domainconfig"
+
+#     def __str__(self):
+#         return self.name
+
+
+
 class Domainconfig(models.Model):
     id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=255, unique=True)  # Domain name
+    name = models.CharField(max_length=255, unique=False)  # Domain name (unique within account only)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    account = models.ForeignKey(Account, on_delete=models.CASCADE)  # Links to the associated Account
+    account = models.ForeignKey(Account, on_delete=models.CASCADE)  # Links to associated Account
+
     mail_from_domain = models.CharField(max_length=255)  # Custom MAIL FROM domain
     spf_record = models.TextField()  # SPF record for the domain
     dmarc_record = models.TextField()  # DMARC record for the domain
+
+    mailing_address = models.EmailField(
+        max_length=255, null=True, blank=True,
+        help_text="Email address to send mail from for this domain"
+    )
+
+    is_default = models.BooleanField(
+        default=False,
+        help_text="Whether this domain is the default for the account"
+    )  # Indicates if it's the default domain
+
+    is_disabled = models.BooleanField(default=False)  # Whether the domain is disabled
     verification_status = models.BooleanField(default=False)  # Verification status
-    created_at = models.DateTimeField(auto_now_add=True)  # When the domain was added
-    updated_at = models.DateTimeField(auto_now=True)  # When the domain was last updated
-    is_disabled = models.BooleanField(default=False)  # 0 for enabled, 1 for disabled
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "Domainconfig"
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'account'],
+                condition=models.Q(is_disabled=False),
+                name='unique_domain_per_account'
+            )
+        ]
 
     def __str__(self):
         return self.name
@@ -283,3 +324,5 @@ class DNSRecord(models.Model):
 
     def __str__(self):
         return self.name
+
+

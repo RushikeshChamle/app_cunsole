@@ -3,9 +3,10 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from app_cunsole.customer.models import Account
 
-from .models import User
+from .models import User, Domainconfig
 from rest_framework import serializers
 from .models import EmailProvider, EmailConfiguration, EmailVerificationLog
+from .models import Domainconfig, DNSRecord
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -112,4 +113,17 @@ class EmailVerificationLogSerializer(serializers.ModelSerializer):
 class GlobalEmailSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = GlobalEmailSettings
+        fields = '__all__'
+
+
+
+class DomainconfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Domainconfig
+        fields = '__all__'
+
+
+class DNSRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DNSRecord
         fields = '__all__'
