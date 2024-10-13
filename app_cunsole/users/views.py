@@ -44,10 +44,22 @@ from .utils import verify_dns_records, verify_dmarc_record, send_test_email
 from .models import EmailConfiguration
 from .utils import verify_spf_record
 
+from .models import User
+
+from typing import Optional
+from django.db.models import QuerySet
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
 
 
 SECRET_KEY = "django-insecure-3t!a&dtryebf_9n(zhm&b#%(!nqc67hisav6hy02faz_ztb=_$"  # Replace with your actual secret key
 
+
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class UserDetailView(LoginRequiredMixin, DetailView):
     model = User
@@ -56,6 +68,15 @@ class UserDetailView(LoginRequiredMixin, DetailView):
 
 
 user_detail_view = UserDetailView.as_view()
+
+
+from typing import TYPE_CHECKING, Optional
+from django.db.models import QuerySet
+
+if TYPE_CHECKING:
+    from .models import User  # Import only for type checking
+
+from .models import User
 
 
 class UserUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
@@ -67,9 +88,11 @@ class UserUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         assert self.request.user.is_authenticated  # type guard
         return self.request.user.get_absolute_url()
 
+
     def get_object(self, queryset: QuerySet | None = None) -> User:
         assert self.request.user.is_authenticated  # type guard
         return self.request.user
+
 
 
 user_update_view = UserUpdateView.as_view()
@@ -1164,6 +1187,109 @@ logger = logging.getLogger(__name__)
 #         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# @api_view(["POST"])
+# def add_domain(request):
+#     """
+#     Add a new domain to the user's account.
+
+#     This view requires that the user is authenticated. It uses the data from the request to create a new
+#     domain record linked to the authenticated user's account. The function handles the domain addition to SES,
+#     creates the Domainconfig, and generates DNS records.
+
+#     The mailing_address, if provided, must use the same domain as the one being added.
+
+#     Returns:
+#         Response: A JSON response indicating the result of the domain addition attempt.
+#                   If authentication is not provided, returns a 401 Unauthorized error.
+#                   If the user doesn't have an associated account, returns a 400 Bad Request error.
+#                   If the mailing_address domain doesn't match the added domain, returns a 400 Bad Request error.
+#     """
+#     try:
+#         if request.user_is_authenticated:
+#             user = request.user_id
+#             account = request.user_account
+
+#             if not account:
+#                 return Response(
+#                     {"error": "User does not have an associated account"},
+#                     status=status.HTTP_400_BAD_REQUEST,
+#                 )
+
+#             domain = request.data.get('domain')
+#             mailing_address = request.data.get('mailing_address')
+
+#             if not domain:
+#                 logger.warning("Domain is required but not provided.")
+#                 return Response({'error': 'Domain is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+#             # Validate mailing_address domain
+#             if mailing_address:
+#                 mailing_domain = mailing_address.split('@')[-1]
+#                 if mailing_domain.lower() != domain.lower():
+#                     logger.warning(f"Mailing address domain ({mailing_domain}) does not match the added domain ({domain}).")
+#                     return Response(
+#                         {'error': 'Mailing address must use the same domain as the one being added'},
+#                         status=status.HTTP_400_BAD_REQUEST
+#                     )
+
+#             # Add domain to SES
+#             ses_result = add_domain_to_ses(domain)
+#             if not ses_result:
+#                 logger.error(f"Failed to add domain to SES for {domain}. SES result: {ses_result}")
+#                 return Response({'error': 'Failed to add domain to SES'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#             # Prepare data for Domainconfig creation
+#             domainconfig_data = {
+#                 'name': domain,
+#                 'user': user,
+#                 'account': account.id,
+#                 'mail_from_domain': ses_result['mail_from_domain'],
+#                 'spf_record': "v=spf1 include:amazonses.com ~all",
+#                 'dmarc_record': "v=DMARC1; p=none;",
+#                 'mailing_address': mailing_address
+#             }
+
+#             # Initialize serializer
+#             serializer = DomainconfigSerializer(data=domainconfig_data)
+
+#             # Validate and save
+#             if serializer.is_valid():
+#                 domain_config = serializer.save()
+
+#                 # Generate and save DNS records
+#                 dns_records = generate_dns_records(domain, ses_result['dkim_tokens'], ses_result['mail_from_domain'])
+#                 for record in dns_records:
+#                     DNSRecord.objects.create(
+#                         domainconfig=domain_config,
+#                         record_type=record['record_type'],
+#                         name=record['name'],
+#                         value=record['value'],
+#                         selector=record.get('selector')
+#                     )
+
+#                 logger.info(f"Domain added successfully: {domain}")
+#                 return Response(
+#                     {
+#                         "success": "Domain added successfully",
+#                         "domain_config": serializer.data,
+#                     },
+#                     status=status.HTTP_201_CREATED,
+#                 )
+
+#             # Log validation errors
+#             logger.error(f"Validation errors: {serializer.errors}")
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#         return Response(
+#             {"error": "Authentication required"},
+#             status=status.HTTP_401_UNAUTHORIZED,
+#         )
+
+#     except Exception as e:
+#         logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+#         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @api_view(["POST"])
 def add_domain(request):
     """
@@ -1194,6 +1320,7 @@ def add_domain(request):
 
             domain = request.data.get('domain')
             mailing_address = request.data.get('mailing_address')
+            is_default = request.data.get('is_default', False)
 
             if not domain:
                 logger.warning("Domain is required but not provided.")
@@ -1223,7 +1350,9 @@ def add_domain(request):
                 'mail_from_domain': ses_result['mail_from_domain'],
                 'spf_record': "v=spf1 include:amazonses.com ~all",
                 'dmarc_record': "v=DMARC1; p=none;",
-                'mailing_address': mailing_address
+                'mailing_address': mailing_address,
+                'is_default': is_default,
+                'verification_status': False  # Initially set to False
             }
 
             # Initialize serializer

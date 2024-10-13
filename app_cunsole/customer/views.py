@@ -30,6 +30,8 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from .models import EmailTrigger
+
+from users.models import Domainconfig
 from .serializers import EmailTriggerSerializer
 from django.views.decorators.csrf import csrf_exempt
 
@@ -660,14 +662,66 @@ def get_customers_by_account(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# previous genric logic
+# @shared_task
+# def send_reminders_emails_task():
+#     today = timezone.now().date()
+#     triggers = EmailTrigger.objects.filter(isactive=True)
+#     sent_emails_info = []
 
+#     for trigger in triggers:
+#         if trigger.condition_type == 0:  # Before Due Date
+#             target_date = today + timezone.timedelta(days=trigger.days_offset)
+#         elif trigger.condition_type == 1:  # On Due Date
+#             target_date = today
+#         elif trigger.condition_type == 2:  # After Due Date
+#             target_date = today - timezone.timedelta(days=trigger.days_offset)
+#         else:
+#             continue
+
+#         invoices = Invoices.objects.filter(
+#             duedate=target_date,
+#             status__in=[0, 1],  # Due or Partial
+#             account=trigger.account
+#         )
+
+#         for invoice in invoices:
+#             customer = Customers.objects.filter(id=invoice.customerid).first()
+#             if customer and customer.email:
+#                 subject = trigger.email_subject
+#                 body = trigger.email_body.format(
+#                     name=customer.name,
+#                     invoice_id=invoice.customid,
+#                     amount_due=invoice.total_amount - invoice.paid_amount,
+#                     status='Due' if invoice.status == 0 else 'Partial'
+#                 )
+
+#                 # Send the email asynchronously
+#                 send_email_task.delay(customer.email, subject, body)
+
+#                 sent_emails_info.append({
+#                     "customer_email": customer.email,
+#                     "customer_name": customer.name,
+#                     "invoice_id": invoice.customid,
+#                     "amount_due": invoice.total_amount - invoice.paid_amount,
+#                 })
+
+#     return sent_emails_info
+
+
+# new logic for getting account id
 @shared_task
 def send_reminders_emails_task():
+    """
+    Task to send reminder emails based on configured email triggers.
+    This checks due dates and sends emails asynchronously.
+    """
     today = timezone.now().date()
     triggers = EmailTrigger.objects.filter(isactive=True)
     sent_emails_info = []
 
     for trigger in triggers:
+        # Calculate the target date based on trigger's condition
         if trigger.condition_type == 0:  # Before Due Date
             target_date = today + timezone.timedelta(days=trigger.days_offset)
         elif trigger.condition_type == 1:  # On Due Date
@@ -677,12 +731,14 @@ def send_reminders_emails_task():
         else:
             continue
 
+        # Get invoices matching the trigger's criteria
         invoices = Invoices.objects.filter(
             duedate=target_date,
             status__in=[0, 1],  # Due or Partial
             account=trigger.account
         )
 
+        # Process each invoice and send emails
         for invoice in invoices:
             customer = Customers.objects.filter(id=invoice.customerid).first()
             if customer and customer.email:
@@ -694,8 +750,13 @@ def send_reminders_emails_task():
                     status='Due' if invoice.status == 0 else 'Partial'
                 )
 
-                # Send the email asynchronously
-                send_email_task.delay(customer.email, subject, body)
+                # Send the email asynchronously with account ID
+                send_email_task.delay(
+                    account_id=trigger.account.id,  # Pass account_id
+                    to_email=customer.email,
+                    subject=subject,
+                    body=body
+                )
 
                 sent_emails_info.append({
                     "customer_email": customer.email,
@@ -709,15 +770,91 @@ def send_reminders_emails_task():
 
 
 
+
+
+
+# @shared_task
+# def send_email_task(to_email, subject, body):
+#     send_mail(
+#         subject,
+#         body,
+#         'info@cunsole.com',  # Change this to your sender email
+#         [to_email],
+#         fail_silently=False,
+#     )
+
+
+
+import logging
+logger = logging.getLogger(__name__)
+
+
+# @shared_task
+# def send_email_task(to_email, subject, body, domain=None):
+#     try:
+#         sender_email = 'info@cunsole.com'  # Default sender email
+
+#         if domain:
+#             domain_config = Domainconfig.objects.filter(name=domain).first()
+#             if domain_config and domain_config.verification_status:
+#                 default_mailing_address = Domainconfig.objects.filter(
+#                     account=domain_config.account,
+#                     is_default=True,
+#                     verification_status=True
+#                 ).first()
+
+#                 if default_mailing_address and default_mailing_address.mailing_address:
+#                     sender_email = default_mailing_address.mailing_address
+
+#         send_mail(
+#             subject,
+#             body,
+#             sender_email,
+#             [to_email],
+#             fail_silently=False,
+#         )
+#         logger.info(f"Email sent successfully to {to_email} from {sender_email}")
+#     except Exception as e:
+#         logger.error(f"Failed to send email to {to_email}: {str(e)}")
+#         raise
+
+
 @shared_task
-def send_email_task(to_email, subject, body):
-    send_mail(
-        subject,
-        body,
-        'info@cunsole.com',  # Change this to your sender email
-        [to_email],
-        fail_silently=False,
-    )
+def send_email_task(account_id, to_email, subject, body):
+    """
+    Asynchronous task to send an email using the appropriate domain configuration.
+    """
+    try:
+        # Default sender email
+        sender_email = 'info@cunsole.com'
+
+        # Fetch the account's default verified domain configuration
+        domain_config = Domainconfig.objects.filter(
+            account_id=account_id, 
+            is_default=True, 
+            verification_status=True
+        ).first()
+
+        if domain_config and domain_config.mailing_address:
+            sender_email = domain_config.mailing_address
+
+        # Send the email
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=sender_email,
+            recipient_list=[to_email],
+            fail_silently=False,
+        )
+
+        logger.info(f"Email sent successfully to {to_email} from {sender_email}")
+
+    except Exception as e:
+        logger.error(f"Failed to send email to {to_email}: {str(e)}")
+        raise
+
+
+
 
 
 
