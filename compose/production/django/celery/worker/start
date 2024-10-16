@@ -1,25 +1,43 @@
+# #!/bin/bash
+
+# set -o errexit
+# set -o pipefail
+# set -o nounset
+
+
+# exec celery -A config.celery_app worker -l INFO
+
+
+# echo "[program:celery]
+
+# command=$(pwd)/venv/bin/celery -A config.celery_app worker -l INFO
+
+# directory=$(pwd)
+
+# autostart=true
+
+# autorestart=true
+
+# user=ubuntu
+
+# " | sudo tee /etc/supervisor/conf.d/celery.conf
+
+
+
 #!/bin/bash
 
 set -o errexit
 set -o pipefail
 set -o nounset
 
+# Use the absolute path to the celery executable
+exec /home/ubuntu/app_cunsole/.venv/bin/celery -A config.celery_app worker -l INFO
 
-exec celery -A config.celery_app worker -l INFO
-
-
+# Create the Supervisor configuration for Celery
 echo "[program:celery]
-
-command=$(pwd)/venv/bin/celery -A config.celery_app worker -l INFO
-
+command=/home/ubuntu/app_cunsole/.venv/bin/celery -A config.celery_app worker -l INFO
 directory=$(pwd)
-
 autostart=true
-
 autorestart=true
-
 user=ubuntu
-
 " | sudo tee /etc/supervisor/conf.d/celery.conf
-
-
