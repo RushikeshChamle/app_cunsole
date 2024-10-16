@@ -905,7 +905,7 @@ def test_email_trigger(request):
             return Response({"error": "Email trigger not found or inactive"}, status=status.HTTP_404_NOT_FOUND)
 
         # Define a test customer email
-        test_email = 'saitharunjanagama@gmail.com'
+        test_email = 'rushikeshchamle23@gmail.com'
 
         # Prepare the email subject and body using the trigger's data
         subject = trigger.email_subject.format(
