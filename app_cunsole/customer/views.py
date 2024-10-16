@@ -23,6 +23,8 @@ from django.core.mail import send_mail
 from django.utils import timezone
 from django.http import JsonResponse
 
+
+
 from .models import  EmailTrigger, Customers
 from django.views import View
 
@@ -31,7 +33,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import EmailTrigger
 
-from users.models import Domainconfig
+
 from .serializers import EmailTriggerSerializer
 from django.views.decorators.csrf import csrf_exempt
 
@@ -817,6 +819,7 @@ logger = logging.getLogger(__name__)
 #     except Exception as e:
 #         logger.error(f"Failed to send email to {to_email}: {str(e)}")
 #         raise
+from django.apps import apps
 
 
 @shared_task
@@ -827,6 +830,11 @@ def send_email_task(account_id, to_email, subject, body):
     try:
         # Default sender email
         sender_email = 'info@cunsole.com'
+
+    
+        # Domainconfig = User.get_model('users', 'Domainconfig')
+        Domainconfig = apps.get_model('user', 'Domainconfig')
+
 
         # Fetch the account's default verified domain configuration
         domain_config = Domainconfig.objects.filter(
