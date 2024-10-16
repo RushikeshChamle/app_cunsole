@@ -72,3 +72,8 @@ server {
         proxy_pass http://unix:/run/gunicorn.sock;  # Ensuring it matches the Gunicorn socket path
     }
 }
+
+
+
+DATABASE_URL="postgres://postgres:GNwcfCa2Ggq751J1wjfs@prod-cunsole.c5ayo8i0ibmf.ap-south-1.rds.amazonaws.com/cunsole"
+USE_DOCKER=false

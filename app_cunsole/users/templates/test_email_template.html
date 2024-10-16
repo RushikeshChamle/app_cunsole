@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Whitelabel Email Test</title>
+</head>
+<body>
+    <h1>Congratulations! Your whitelabeled email is working.</h1>
+    <p>This email was sent from your domain: {{ domain }}</p>
+    <h2>Your current configuration:</h2>
+    <ul>
+        <li>DKIM Selector: {{ dkim_selector }}</li>
+        <li>SPF Record: {{ spf_record }}</li>
+        <li>DMARC Record: {{ dmarc_record }}</li>
+    </ul>
+    <p>If you received this email, it means your DNS records are set up correctly and your email is being sent through your whitelabeled domain.</p>
+</body>
+</html>

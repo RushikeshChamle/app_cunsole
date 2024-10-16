@@ -8,6 +8,16 @@ class Account(models.Model):
     name = models.CharField(max_length=100)
     created_date = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
+    email = models.EmailField(max_length=255, unique=True, null=True, blank=True)  # Account contact email
+    phone_number = models.CharField(max_length=15, null=True, blank=True)  # Optional phone number
+    address = models.TextField(null=True, blank=True)  # Address for the account
+    industry = models.CharField(max_length=100, null=True, blank=True)  # Type of industry (optional)
+    credit_limit = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)  # Credit limit for account
+    updated_date = models.DateTimeField(auto_now=True)  # Automatically update timestamp on modification
+    is_active = models.BooleanField(default=True)  # Status of account
+    # Flags for email
+    is_email_whitelabeled = models.BooleanField(default=False)  # Flag for email white-labeling
+    is_verified = models.BooleanField(default=False)  # Flag for email verification
 
     class Meta:
         db_table = "account"
@@ -131,3 +141,9 @@ class Trigger_rule(models.Model):
 
 #     def __str__(self):
 #         return f"Email to {self.recipient_email} on {self.sent_at}"
+
+
+
+
+
+

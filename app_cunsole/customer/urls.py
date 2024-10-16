@@ -1,6 +1,6 @@
 from django.urls import path
 
-from app_cunsole.customer.views import bulk_create_customers,update_email_trigger,get_entire_account_invoice_reminders,get_all_invoice_reminders,get_invoice_with_all_reminders,get_account_invoice_reminders, get_next_invoice_reminder,get_customer,get_customers_by_account,get_email_triggers, get_email_trigger_by_id, send_reminders_emails,create_email_trigger, test_email_trigger
+from app_cunsole.customer.views import bulk_create_customers,update_email_trigger,get_entire_account_invoice_reminders,get_all_invoice_reminders,get_invoice_with_all_reminders,get_account_invoice_reminders, get_next_invoice_reminder,get_customer,get_customers_by_account,get_email_triggers, get_email_trigger_by_id, send_reminders_emails,create_email_trigger, test_email_trigger, get_active_customers_by_account
 from app_cunsole.customer.views import create_customer
 from app_cunsole.invoices.views import get_customer_invoice_summary
 # from app_cunsole.invoices.views import get_customers_by_account
@@ -15,6 +15,7 @@ urlpatterns = [
         name="bulk_create_customers",
     ),  # Endpoint for creating a new customer
     path("customers/", get_customers_by_account, name="get_customers_by_account"),
+    path("getcustomers/", get_active_customers_by_account, name="getcustomers"),
     
     path(
         "customerinvoices/",
