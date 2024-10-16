@@ -775,15 +775,15 @@ def send_reminders_emails_task():
 
 
 
-# @shared_task
-# def send_email_task(to_email, subject, body):
-#     send_mail(
-#         subject,
-#         body,
-#         'info@cunsole.com',  # Change this to your sender email
-#         [to_email],
-#         fail_silently=False,
-#     )
+@shared_task
+def send_email_task(to_email, subject, body):
+    send_mail(
+        subject,
+        body,
+        'info@cunsole.com',  # Change this to your sender email
+        [to_email],
+        fail_silently=False,
+    )
 
 
 
@@ -819,47 +819,48 @@ logger = logging.getLogger(__name__)
 #     except Exception as e:
 #         logger.error(f"Failed to send email to {to_email}: {str(e)}")
 #         raise
-from django.apps import apps
+
+# from django.apps import apps
 
 
-@shared_task
-def send_email_task(account_id, to_email, subject, body):
-    """
-    Asynchronous task to send an email using the appropriate domain configuration.
-    """
-    try:
-        # Default sender email
-        sender_email = 'info@cunsole.com'
+# @shared_task
+# def send_email_task(account_id, to_email, subject, body):
+#     """
+#     Asynchronous task to send an email using the appropriate domain configuration.
+#     """
+#     try:
+#         # Default sender email
+#         sender_email = 'info@cunsole.com'
 
     
-        # Domainconfig = User.get_model('users', 'Domainconfig')
-        Domainconfig = apps.get_model('user', 'Domainconfig')
+#         # Domainconfig = User.get_model('users', 'Domainconfig')
+#         Domainconfig = apps.get_model('user', 'Domainconfig')
 
 
-        # Fetch the account's default verified domain configuration
-        domain_config = Domainconfig.objects.filter(
-            account_id=account_id, 
-            is_default=True, 
-            verification_status=True
-        ).first()
+#         # Fetch the account's default verified domain configuration
+#         domain_config = Domainconfig.objects.filter(
+#             account_id=account_id, 
+#             is_default=True, 
+#             verification_status=True
+#         ).first()
 
-        if domain_config and domain_config.mailing_address:
-            sender_email = domain_config.mailing_address
+#         if domain_config and domain_config.mailing_address:
+#             sender_email = domain_config.mailing_address
 
-        # Send the email
-        send_mail(
-            subject=subject,
-            message=body,
-            from_email=sender_email,
-            recipient_list=[to_email],
-            fail_silently=False,
-        )
+#         # Send the email
+#         send_mail(
+#             subject=subject,
+#             message=body,
+#             from_email=sender_email,
+#             recipient_list=[to_email],
+#             fail_silently=False,
+#         )
 
-        logger.info(f"Email sent successfully to {to_email} from {sender_email}")
+#         logger.info(f"Email sent successfully to {to_email} from {sender_email}")
 
-    except Exception as e:
-        logger.error(f"Failed to send email to {to_email}: {str(e)}")
-        raise
+#     except Exception as e:
+#         logger.error(f"Failed to send email to {to_email}: {str(e)}")
+#         raise
 
 
 
@@ -904,7 +905,7 @@ def test_email_trigger(request):
             return Response({"error": "Email trigger not found or inactive"}, status=status.HTTP_404_NOT_FOUND)
 
         # Define a test customer email
-        test_email = 'rushikeshchamle23@gmail.com'
+        test_email = 'saitharunjanagama@gmail.com'
 
         # Prepare the email subject and body using the trigger's data
         subject = trigger.email_subject.format(
