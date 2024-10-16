@@ -6,3 +6,20 @@ set -o nounset
 
 
 exec celery -A config.celery_app worker -l INFO
+
+
+echo "[program:celery]
+
+command=$(pwd)/venv/bin/celery -A config.celery_app worker -l INFO
+
+directory=$(pwd)
+
+autostart=true
+
+autorestart=true
+
+user=ubuntu
+
+" | sudo tee /etc/supervisor/conf.d/celery.conf
+
+

@@ -1642,6 +1642,9 @@ from .models import Invoices
 #         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
+
+
+
 @api_view(["GET"])
 def credit_sales_card_data(request):
 
