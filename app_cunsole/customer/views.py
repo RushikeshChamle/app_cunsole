@@ -1,4 +1,5 @@
 import json
+from venv import logger
 
 import jwt
 from django.http import JsonResponse
@@ -216,6 +217,10 @@ def get_active_customers_by_account(request):
                     {"error": "User does not have an associated account"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+            
+
+
+            
 
             # Fetch active customers based on the account and isactive = True
             customers_list = Customers.objects.filter(account_id=account.id, isactive=True)
@@ -775,20 +780,20 @@ def send_reminders_emails_task():
 
 
 
-@shared_task
-def send_email_task(to_email, subject, body):
-    send_mail(
-        subject,
-        body,
-        'info@cunsole.com',  # Change this to your sender email
-        [to_email],
-        fail_silently=False,
-    )
+# @shared_task
+# def send_email_task(to_email, subject, body):
+#     send_mail(
+#         subject,
+#         body,
+#         'info@cunsole.com',  # Change this to your sender email
+#         [to_email],
+#         fail_silently=False,
+#     )
 
 
 
-import logging
-logger = logging.getLogger(__name__)
+# import logging
+# logger = logging.getLogger(__name__)
 
 
 # @shared_task
@@ -820,8 +825,10 @@ logger = logging.getLogger(__name__)
 #         logger.error(f"Failed to send email to {to_email}: {str(e)}")
 #         raise
 
-# from django.apps import apps
+from django.apps import apps
 
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 # @shared_task
 # def send_email_task(account_id, to_email, subject, body):
@@ -834,7 +841,7 @@ logger = logging.getLogger(__name__)
 
     
 #         # Domainconfig = User.get_model('users', 'Domainconfig')
-#         Domainconfig = apps.get_model('user', 'Domainconfig')
+#         Domainconfig = apps.get_model( 'users', 'Domainconfig')
 
 
 #         # Fetch the account's default verified domain configuration
@@ -862,8 +869,58 @@ logger = logging.getLogger(__name__)
 #         logger.error(f"Failed to send email to {to_email}: {str(e)}")
 #         raise
 
+from django.apps import apps
+from celery import shared_task
+from django.core.mail import send_mail
 
+@shared_task
+def send_email_task(account_id, to_email, subject, body):
+    """
+    Asynchronous task to send an email using the appropriate domain configuration.
+    """
+    try:
+        # Default sender email
+        sender_email = 'info@cunsole.com'
+        print("Starting email sending process...")  # Debugging line
 
+        # Reference the Domainconfig model in the Users app
+        Domainconfig = apps.get_model('Users', 'Domainconfig')  # Use 'Users' as the app name
+
+        # Fetch the account's default verified domain configuration
+        domain_config = Domainconfig.objects.filter(
+            account_id=account_id, 
+            is_default=True, 
+            verification_status=True
+        ).first()
+
+        # Debugging: Check if domain_config exists and print details
+        if domain_config:
+            print(f"Domain config found: {domain_config}")
+            if domain_config.mailing_address:
+                sender_email = domain_config.mailing_address
+                print(f"Using sender email: {sender_email}")
+            else:
+                print("No mailing address found in domain config.")
+        else:
+            print("No active domain config found for this account.")
+
+        # Debugging: Print the subject and body before sending
+        print(f"Preparing to send email:\nSubject: {subject}\nBody: {body}")
+
+        # Send the email
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=sender_email,
+            recipient_list=[to_email],
+            fail_silently=False,
+        )
+
+        print(f"Email sent successfully to {to_email} from {sender_email}")
+
+    except Exception as e:
+        print(f"Failed to send email to {to_email}: {str(e)}")
+        raise
 
 
 
@@ -922,8 +979,9 @@ def test_email_trigger(request):
             status='Due'  # You can change this to 'Partial' or other statuses for testing
         )
 
+        account_id = trigger.account_id 
         # Send the test email asynchronously
-        send_email_task.delay(test_email, subject, body)
+        send_email_task.delay(account_id, test_email, subject, body)
 
         return Response({
             "status": "Test email task initiated",
