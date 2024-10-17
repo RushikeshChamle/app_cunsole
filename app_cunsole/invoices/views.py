@@ -773,6 +773,101 @@ from django.db.models import Sum, F, Avg  # Add Avg to the import
 
 
 
+# @api_view(["GET"])
+# def invoice_summary_cards(request):
+#     try:
+#         # Ensure the user is authenticated
+#         if request.user_is_authenticated:
+#             user = request.user
+#             account = request.user_account
+
+#             if not account:
+#                 return Response(
+#                     {"error": "User does not have an associated account"},
+#                     status=status.HTTP_400_BAD_REQUEST,
+#                 )
+
+#             # Get current date and date one month ago
+#             current_date = timezone.now().date()
+#             one_month_ago = current_date - relativedelta(months=1)
+            
+#             # Base queryset
+#             invoices = Invoices.objects.filter(account_id=account.id)
+            
+#             # Calculate current month's metrics
+#             current_outstanding = invoices.filter(
+#                 status__in=[0, 1],
+#                 issuedate__lte=current_date
+#             ).aggregate(total=Sum(F('total_amount') - F('paid_amount')))['total'] or 0
+            
+#             current_overdue = invoices.filter(
+#                 status__in=[0, 1],
+#                 duedate__lt=current_date
+#             ).aggregate(total=Sum(F('total_amount') - F('paid_amount')))['total'] or 0
+            
+#             current_due = invoices.filter(
+#                 status=0,
+#                 issuedate__lte=current_date
+#             ).aggregate(total=Sum(F('total_amount') - F('paid_amount')))['total'] or 0
+            
+#             # Calculate last month's metrics
+#             last_month_outstanding = invoices.filter(
+#                 status__in=[0, 1],
+#                 issuedate__lte=one_month_ago
+#             ).aggregate(total=Sum(F('total_amount') - F('paid_amount')))['total'] or 0
+            
+#             last_month_overdue = invoices.filter(
+#                 status__in=[0, 1],
+#                 duedate__lt=one_month_ago
+#             ).aggregate(total=Sum(F('total_amount') - F('paid_amount')))['total'] or 0
+            
+#             last_month_due = invoices.filter(
+#                 status=0,
+#                 issuedate__lte=one_month_ago
+#             ).aggregate(total=Sum(F('total_amount') - F('paid_amount')))['total'] or 0
+            
+#             # Calculate percentage changes
+#             def calculate_percentage_change(current, previous):
+#                 if previous == 0:
+#                     return 100 if current > 0 else 0
+#                 return ((current - previous) / previous) * 100
+
+#             outstanding_change = calculate_percentage_change(current_outstanding, last_month_outstanding)
+#             overdue_change = calculate_percentage_change(current_overdue, last_month_overdue)
+#             due_change = calculate_percentage_change(current_due, last_month_due)
+            
+#             # Prepare the response data
+#             summary = {
+#                 'outstanding': {
+#                     'current': current_outstanding,
+#                     'previous': last_month_outstanding,
+#                     'change': round(outstanding_change, 2),
+#                 },
+#                 'overdue': {
+#                     'current': current_overdue,
+#                     'previous': last_month_overdue,
+#                     'change': round(overdue_change, 2),
+#                 },
+#                 'due': {
+#                     'current': current_due,
+#                     'previous': last_month_due,
+#                     'change': round(due_change, 2),
+#                 },
+#             }
+            
+#             return Response({
+#                 'summary': summary,
+#             }, status=status.HTTP_200_OK)
+
+#         return Response(
+#             {"error": "Authentication required"},
+#             status=status.HTTP_401_UNAUTHORIZED,
+#         )
+
+#     except Exception as e:
+#         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
 @api_view(["GET"])
 def invoice_summary_cards(request):
     try:
@@ -789,75 +884,68 @@ def invoice_summary_cards(request):
 
             # Get current date and date one month ago
             current_date = timezone.now().date()
-            one_month_ago = current_date - relativedelta(months=1)
-            
-            # Base queryset
-            invoices = Invoices.objects.filter(account_id=account.id)
-            
-            # Calculate current month's metrics
-            current_outstanding = invoices.filter(
-                status__in=[0, 1],
-                issuedate__lte=current_date
+            one_month_ago = current_date - timedelta(days=30)
+
+            # Base queryset filtered by account
+            invoices = Invoices.objects.filter(account=account)
+
+            # Calculate total receivables
+            total_receivables = invoices.aggregate(
+                total=Sum(F('total_amount') - F('paid_amount'))
+            )['total'] or 0
+
+            # Calculate overdue amount
+            overdue_amount = invoices.filter(
+                duedate__lt=current_date, status__in=[0, 1]
             ).aggregate(total=Sum(F('total_amount') - F('paid_amount')))['total'] or 0
-            
-            current_overdue = invoices.filter(
-                status__in=[0, 1],
-                duedate__lt=current_date
+
+            # Calculate due amount (future or today)
+            due_amount = invoices.filter(
+                duedate__gte=current_date, status__in=[0, 1]
             ).aggregate(total=Sum(F('total_amount') - F('paid_amount')))['total'] or 0
-            
-            current_due = invoices.filter(
-                status=0,
-                issuedate__lte=current_date
-            ).aggregate(total=Sum(F('total_amount') - F('paid_amount')))['total'] or 0
-            
-            # Calculate last month's metrics
-            last_month_outstanding = invoices.filter(
-                status__in=[0, 1],
-                issuedate__lte=one_month_ago
-            ).aggregate(total=Sum(F('total_amount') - F('paid_amount')))['total'] or 0
-            
+
+            # Calculate last month overdue
             last_month_overdue = invoices.filter(
-                status__in=[0, 1],
-                duedate__lt=one_month_ago
+                duedate__lt=one_month_ago, status__in=[0, 1]
             ).aggregate(total=Sum(F('total_amount') - F('paid_amount')))['total'] or 0
-            
+
+            # Calculate last month due
             last_month_due = invoices.filter(
-                status=0,
-                issuedate__lte=one_month_ago
+                duedate__gte=one_month_ago, status__in=[0, 1]
             ).aggregate(total=Sum(F('total_amount') - F('paid_amount')))['total'] or 0
-            
-            # Calculate percentage changes
+
+            # Calculate outstanding
+            current_outstanding = total_receivables
+            last_month_outstanding = invoices.filter(
+                status__in=[0, 1], issuedate__lte=one_month_ago
+            ).aggregate(total=Sum(F('total_amount') - F('paid_amount')))['total'] or 0
+
+            # Helper to calculate percentage changes
             def calculate_percentage_change(current, previous):
                 if previous == 0:
                     return 100 if current > 0 else 0
                 return ((current - previous) / previous) * 100
 
-            outstanding_change = calculate_percentage_change(current_outstanding, last_month_outstanding)
-            overdue_change = calculate_percentage_change(current_overdue, last_month_overdue)
-            due_change = calculate_percentage_change(current_due, last_month_due)
-            
-            # Prepare the response data
+            # Prepare the response summary
             summary = {
                 'outstanding': {
                     'current': current_outstanding,
                     'previous': last_month_outstanding,
-                    'change': round(outstanding_change, 2),
+                    'change': round(calculate_percentage_change(current_outstanding, last_month_outstanding), 2),
                 },
                 'overdue': {
-                    'current': current_overdue,
+                    'current': overdue_amount,
                     'previous': last_month_overdue,
-                    'change': round(overdue_change, 2),
+                    'change': round(calculate_percentage_change(overdue_amount, last_month_overdue), 2),
                 },
                 'due': {
-                    'current': current_due,
+                    'current': due_amount,
                     'previous': last_month_due,
-                    'change': round(due_change, 2),
+                    'change': round(calculate_percentage_change(due_amount, last_month_due), 2),
                 },
             }
-            
-            return Response({
-                'summary': summary,
-            }, status=status.HTTP_200_OK)
+
+            return Response({'summary': summary}, status=status.HTTP_200_OK)
 
         return Response(
             {"error": "Authentication required"},
@@ -866,9 +954,6 @@ def invoice_summary_cards(request):
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-
-
 
 
 @api_view(["GET"])
@@ -1196,17 +1281,87 @@ def ar_status_card(request):
 
 # card
 
+# @api_view(['GET'])
+# def get_top_due_customers(request):
+#     """
+#     API to get top due customers for a user's account with due amounts and days left for due.
+#     It calculates the due amount by summing all unpaid invoices and the number of days to the closest due date.
+#     """
+#     try:
+#         # Ensure the user is authenticated
+#         if request.user_is_authenticated:
+#             user = request.user
+#             account = request.user_account  # Assuming 'user_account' is set correctly
+
+#             if not account:
+#                 return Response(
+#                     {"error": "User does not have an associated account"},
+#                     status=status.HTTP_400_BAD_REQUEST,
+#                 )
+
+#             # Query for customers associated with the account
+#             customers = Customers.objects.filter(account=account)
+
+#             # List to hold processed customer data
+#             top_due_customers = []
+
+#             # Process each customer to calculate the total due amount and due days
+#             for customer in customers:
+#                 # Get all unpaid invoices for the customer (status=0 means 'Due')
+#                 unpaid_invoices = Invoices.objects.filter(customerid=customer.id, status__in=[0, 1])
+
+#                 # Skip if no unpaid invoices for this customer
+#                 if not unpaid_invoices.exists():
+#                     continue
+
+#                 # Calculate the total due amount for the customer
+#                 total_due_amount = unpaid_invoices.aggregate(total_due=Sum('total_amount'))['total_due'] or 0
+
+#                 # Calculate the nearest due date (oldest 'duedate' from unpaid invoices)
+#                 nearest_due_invoice = unpaid_invoices.order_by('duedate').first()
+#                 nearest_due_date = nearest_due_invoice.duedate if nearest_due_invoice else None
+
+#                 # Calculate the number of days until due (or overdue if negative)
+#                 if nearest_due_date:
+#                     due_in_days = (nearest_due_date - timezone.now()).days
+#                 else:
+#                     due_in_days = None
+
+#                 # Prepare customer data
+#                 customer_data = {
+#                     'name': customer.name,
+#                     'due': f'{total_due_amount:,.2f}',  # Format as comma-separated number with two decimals
+#                     'dueIn': f'{due_in_days} days' if due_in_days is not None else 'N/A'
+#                 }
+
+#                 # Append to the top due customer list
+#                 top_due_customers.append(customer_data)
+
+#             # Sort customers by the highest due amount (descending)
+#             top_due_customers.sort(key=lambda x: float(x['due'].replace(',', '')), reverse=True)
+
+#             # Return the top due customers as JSON response
+#             return Response(top_due_customers)
+
+#         return Response(
+#             {"error": "Authentication required"},
+#             status=status.HTTP_401_UNAUTHORIZED,
+#         )
+
+#     except Exception as e:
+#         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 @api_view(['GET'])
 def get_top_due_customers(request):
     """
     API to get top due customers for a user's account with due amounts and days left for due.
-    It calculates the due amount by summing all unpaid invoices and the number of days to the closest due date.
+    It calculates the due amount by summing the outstanding amount of unpaid and partially paid invoices.
     """
     try:
         # Ensure the user is authenticated
         if request.user_is_authenticated:
             user = request.user
-            account = request.user_account  # Assuming 'user_account' is set correctly
+            account = request.user_account  # Ensure 'user_account' is correctly set
 
             if not account:
                 return Response(
@@ -1220,44 +1375,47 @@ def get_top_due_customers(request):
             # List to hold processed customer data
             top_due_customers = []
 
-            # Process each customer to calculate the total due amount and due days
+            # Process each customer to calculate the total outstanding amount and due days
             for customer in customers:
-                # Get all unpaid invoices for the customer (status=0 means 'Due')
-                unpaid_invoices = Invoices.objects.filter(customerid=customer.id, status=0)
+                # Get all unpaid or partially paid invoices (status 0 or 1) for the customer
+                unpaid_invoices = Invoices.objects.filter(customerid=customer.id, status__in=[0, 1])
 
-                # Skip if no unpaid invoices for this customer
+                # Skip if no unpaid or partially paid invoices exist for this customer
                 if not unpaid_invoices.exists():
                     continue
 
-                # Calculate the total due amount for the customer
-                total_due_amount = unpaid_invoices.aggregate(total_due=Sum('total_amount'))['total_due'] or 0
+                # Calculate the total outstanding amount (total_amount - paid_amount)
+                total_outstanding = unpaid_invoices.aggregate(
+                    total_due=Sum(F('total_amount') - F('paid_amount'))
+                )['total_due'] or 0
 
-                # Calculate the nearest due date (oldest 'duedate' from unpaid invoices)
+                # Get the nearest due date (earliest 'duedate' among unpaid invoices)
                 nearest_due_invoice = unpaid_invoices.order_by('duedate').first()
                 nearest_due_date = nearest_due_invoice.duedate if nearest_due_invoice else None
 
                 # Calculate the number of days until due (or overdue if negative)
                 if nearest_due_date:
-                    due_in_days = (nearest_due_date - timezone.now()).days
+                    due_in_days = (nearest_due_date.date() - timezone.now().date()).days
                 else:
                     due_in_days = None
 
-                # Prepare customer data
+                # Prepare the customer data
                 customer_data = {
                     'name': customer.name,
-                    'due': f'{total_due_amount:,.2f}',  # Format as comma-separated number with two decimals
+                    'due': f'{total_outstanding:,.2f}',  # Format as comma-separated with two decimals
                     'dueIn': f'{due_in_days} days' if due_in_days is not None else 'N/A'
                 }
 
-                # Append to the top due customer list
+                # Append to the top due customers list
                 top_due_customers.append(customer_data)
 
-            # Sort customers by the highest due amount (descending)
+            # Sort customers by the highest outstanding amount in descending order
             top_due_customers.sort(key=lambda x: float(x['due'].replace(',', '')), reverse=True)
 
             # Return the top due customers as JSON response
-            return Response(top_due_customers)
+            return Response(top_due_customers, status=status.HTTP_200_OK)
 
+        # Handle unauthenticated access
         return Response(
             {"error": "Authentication required"},
             status=status.HTTP_401_UNAUTHORIZED,
@@ -1265,7 +1423,8 @@ def get_top_due_customers(request):
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
+
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -1282,9 +1441,6 @@ from rest_framework import status
 from django.db.models import Sum
 from .models import Invoices
 
-
-
- 
 
 
 from datetime import timedelta
@@ -1357,8 +1513,6 @@ def invoice_payment_card(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-
-
 
 
 
@@ -1645,13 +1799,153 @@ from .models import Invoices
 
 
 
+# @api_view(["GET"])
+# def credit_sales_card_data(request):
+
+
+
+#     try:
+        
+#         if request.user_is_authenticated:
+#             account = request.user_account
+
+#             if not account:
+#                 return Response(
+#                     {"error": "User does not have an associated account"},
+#                     status=status.HTTP_400_BAD_REQUEST,
+#                 )
+
+#             # Get issuedate from query parameters
+#             issuedate_str = request.query_params.get('issuedate')
+
+#             if issuedate_str:
+#                 try:
+#                     issuedate = datetime.strptime(issuedate_str, '%Y-%m-%d').date()
+#                 except ValueError:
+#                     return Response(
+#                         {"error": "Invalid date format. Use YYYY-MM-DD."},
+#                         status=status.HTTP_400_BAD_REQUEST,
+#                     )
+                
+#                 # Filter invoices by the issued date
+#                 invoices = Invoices.objects.filter(
+#                     account_id=account.id,
+#                     issuedate=issuedate,
+#                     status__in=[0, 1]  # Assuming 0 and 1 are statuses for unpaid invoices
+#                 )
+
+#                 invoice_details = [
+#                     {
+#                         'id': invoice.id,
+#                         'customid': invoice.customid,
+#                         'name': invoice.name,
+#                         'issuedate': invoice.issuedate.isoformat(),
+#                         'total_amount': invoice.total_amount,
+#                         'paid_amount': invoice.paid_amount,
+#                         'status': invoice.get_status_display()  # Get display value for status
+#                     }
+#                     for invoice in invoices
+#                 ]
+
+#                 # Calculate within due and overdue amounts for the specified issued date
+#                 within_due = invoices.filter(
+#                     duedate__gte=timezone.now()
+#                 ).aggregate(total=Sum('total_amount'))['total'] or 0
+                
+#                 overdue = invoices.filter(
+#                     duedate__lt=timezone.now()
+#                 ).aggregate(total=Sum('total_amount'))['total'] or 0
+
+#                 return Response({
+#                     'issuedate': issuedate.isoformat(),
+#                     'invoices': invoice_details,
+#                     'withinDue': within_due,
+#                     'overdue': overdue
+#                 }, status=status.HTTP_200_OK)
+
+#             # If no issuedate is provided, return monthly data for the last 12 months
+#             end_date = timezone.now().date()
+#             start_date = end_date - relativedelta(months=11)
+
+#             monthly_data = []
+#             current_date = start_date
+            
+#             while current_date <= end_date:
+#                 month_end = (current_date + relativedelta(months=1) - relativedelta(days=1))
+
+#                 # Fetching invoices for the current month
+#                 invoices = Invoices.objects.filter(
+#                     account_id=account.id,
+#                     issuedate__range=[current_date, month_end],
+#                     status__in=[0, 1]  # Assuming 0 and 1 are statuses for unpaid invoices
+#                 )
+
+#                 # Calculate total credit sales for the month
+#                 total_credit_sales = invoices.aggregate(total=Sum('total_amount'))['total'] or 0
+
+#                 # Calculate within due and overdue amounts for the month
+#                 within_due = invoices.filter(
+#                     duedate__gte=timezone.now()
+#                 ).aggregate(total=Sum('total_amount'))['total'] or 0
+                
+#                 overdue = invoices.filter(
+#                     duedate__lt=timezone.now()
+#                 ).aggregate(total=Sum('total_amount'))['total'] or 0
+
+#                 # Collect invoice details
+#                 invoice_details = [
+#                     {
+#                         'id': invoice.id,
+#                         'customid': invoice.customid,
+#                         'name': invoice.name,
+#                         'issuedate': invoice.issuedate.isoformat(),
+#                         'total_amount': invoice.total_amount,
+#                         'paid_amount': invoice.paid_amount,
+#                         'status': invoice.get_status_display()  # Get display value for status
+#                     }
+#                     for invoice in invoices
+#                 ]
+
+#                 monthly_data.append({
+#                     'month_start': current_date.isoformat(),
+#                     'month_end': month_end.isoformat(),
+#                     'totalCreditSale': total_credit_sales,
+#                     'withinDue': within_due,
+#                     'overdue': overdue,
+#                     'invoices': invoice_details  # Include invoice details in the response
+#                 })
+
+#                 current_date += relativedelta(months=1)
+
+#             # Fill in any months without data
+#             while current_date <= end_date:
+#                 month_end = (current_date + relativedelta(months=1) - relativedelta(days=1))
+#                 monthly_data.append({
+#                     'month_start': current_date.isoformat(),
+#                     'month_end': month_end.isoformat(),
+#                     'totalCreditSale': 0,
+#                     'withinDue': 0,
+#                     'overdue': 0,
+#                     'invoices': []
+#                 })
+#                 current_date += relativedelta(months=1)
+
+#             return Response({
+#                 'data': monthly_data
+#             }, status=status.HTTP_200_OK)
+
+#         return Response(
+#             {"error": "Authentication required"},
+#             status=status.HTTP_401_UNAUTHORIZED,
+#         )
+
+#     except Exception as e:
+#         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
 @api_view(["GET"])
 def credit_sales_card_data(request):
-
-
-
     try:
-        
         if request.user_is_authenticated:
             account = request.user_account
 
@@ -1661,22 +1955,24 @@ def credit_sales_card_data(request):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Get issuedate from query parameters
-            issuedate_str = request.query_params.get('issuedate')
+            # Get start_date and end_date from query parameters
+            start_date_str = request.query_params.get('start_date')
+            end_date_str = request.query_params.get('end_date')
 
-            if issuedate_str:
+            if start_date_str and end_date_str:
                 try:
-                    issuedate = datetime.strptime(issuedate_str, '%Y-%m-%d').date()
+                    start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                    end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
                 except ValueError:
                     return Response(
                         {"error": "Invalid date format. Use YYYY-MM-DD."},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
                 
-                # Filter invoices by the issued date
+                # Filter invoices by the date range
                 invoices = Invoices.objects.filter(
                     account_id=account.id,
-                    issuedate=issuedate,
+                    issuedate__range=[start_date, end_date],
                     status__in=[0, 1]  # Assuming 0 and 1 are statuses for unpaid invoices
                 )
 
@@ -1688,28 +1984,32 @@ def credit_sales_card_data(request):
                         'issuedate': invoice.issuedate.isoformat(),
                         'total_amount': invoice.total_amount,
                         'paid_amount': invoice.paid_amount,
-                        'status': invoice.get_status_display()  # Get display value for status
+                        'status': invoice.get_status_display()
                     }
                     for invoice in invoices
                 ]
 
-                # Calculate within due and overdue amounts for the specified issued date
+                # Calculate totals for the entire date range
+                total_credit_sales = invoices.aggregate(total=Sum('total_amount'))['total'] or 0
                 within_due = invoices.filter(
                     duedate__gte=timezone.now()
                 ).aggregate(total=Sum('total_amount'))['total'] or 0
-                
                 overdue = invoices.filter(
                     duedate__lt=timezone.now()
                 ).aggregate(total=Sum('total_amount'))['total'] or 0
 
                 return Response({
-                    'issuedate': issuedate.isoformat(),
-                    'invoices': invoice_details,
-                    'withinDue': within_due,
-                    'overdue': overdue
+                    'data': [{
+                        'start_date': start_date.isoformat(),
+                        'end_date': end_date.isoformat(),
+                        'totalCreditSale': total_credit_sales,
+                        'withinDue': within_due,
+                        'overdue': overdue,
+                        'invoices': invoice_details
+                    }]
                 }, status=status.HTTP_200_OK)
 
-            # If no issuedate is provided, return monthly data for the last 12 months
+            # If no date range is provided, return monthly data for the last 12 months
             end_date = timezone.now().date()
             start_date = end_date - relativedelta(months=11)
 
@@ -1723,22 +2023,17 @@ def credit_sales_card_data(request):
                 invoices = Invoices.objects.filter(
                     account_id=account.id,
                     issuedate__range=[current_date, month_end],
-                    status__in=[0, 1]  # Assuming 0 and 1 are statuses for unpaid invoices
+                    status__in=[0, 1]
                 )
 
-                # Calculate total credit sales for the month
                 total_credit_sales = invoices.aggregate(total=Sum('total_amount'))['total'] or 0
-
-                # Calculate within due and overdue amounts for the month
                 within_due = invoices.filter(
                     duedate__gte=timezone.now()
                 ).aggregate(total=Sum('total_amount'))['total'] or 0
-                
                 overdue = invoices.filter(
                     duedate__lt=timezone.now()
                 ).aggregate(total=Sum('total_amount'))['total'] or 0
 
-                # Collect invoice details
                 invoice_details = [
                     {
                         'id': invoice.id,
@@ -1747,33 +2042,20 @@ def credit_sales_card_data(request):
                         'issuedate': invoice.issuedate.isoformat(),
                         'total_amount': invoice.total_amount,
                         'paid_amount': invoice.paid_amount,
-                        'status': invoice.get_status_display()  # Get display value for status
+                        'status': invoice.get_status_display()
                     }
                     for invoice in invoices
                 ]
 
                 monthly_data.append({
-                    'month_start': current_date.isoformat(),
-                    'month_end': month_end.isoformat(),
+                    'start_date': current_date.isoformat(),
+                    'end_date': month_end.isoformat(),
                     'totalCreditSale': total_credit_sales,
                     'withinDue': within_due,
                     'overdue': overdue,
-                    'invoices': invoice_details  # Include invoice details in the response
+                    'invoices': invoice_details
                 })
 
-                current_date += relativedelta(months=1)
-
-            # Fill in any months without data
-            while current_date <= end_date:
-                month_end = (current_date + relativedelta(months=1) - relativedelta(days=1))
-                monthly_data.append({
-                    'month_start': current_date.isoformat(),
-                    'month_end': month_end.isoformat(),
-                    'totalCreditSale': 0,
-                    'withinDue': 0,
-                    'overdue': 0,
-                    'invoices': []
-                })
                 current_date += relativedelta(months=1)
 
             return Response({
@@ -1787,3 +2069,5 @@ def credit_sales_card_data(request):
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
