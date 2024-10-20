@@ -572,6 +572,8 @@ def add_payment(request):
         data = request.data.copy()
         data['user'] = user
         data['account'] = account.id
+        data['is_disabled'] = False  # Ensure this is set
+
 
         # Retrieve the invoice and validate its existence
         invoice_id = data.get('invoice')
