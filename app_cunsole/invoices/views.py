@@ -27,7 +27,7 @@ from .models import Invoices
 
 
 
- 
+import pandas as pd
 
 
 from datetime import timedelta
@@ -61,157 +61,163 @@ from django.core.mail import EmailMessage
 import json
 
 
-# @csrf_exempt
+
+
+@api_view(["POST"])
 def create_invoice(request):
-    if request.method == "POST":
+    """
+    Create a new invoice record.
+
+    This view requires that the user is authenticated. It uses the data from the request to create a new
+    invoice record linked to the authenticated user's account. The data is validated and serialized before
+    saving the new invoice record.
+
+    Returns:
+        Response: A JSON response indicating the result of the creation attempt.
+                  If authentication is not provided, returns a 401 Unauthorized error.
+                  If the data is invalid, returns a 400 Bad Request error.
+    """
+    try:
         if request.user_is_authenticated:
+            user = request.user_id
             account = request.user_account
 
-            # Deserialize request data
-            data = json.loads(request.body)
-            data["account"] = account.id if account else None
+            if not account:
+                return Response(
+                    {"error": "User does not have an associated account"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-            # Validate customer and dunning plan if provided
-            customer_id = data.get("customerid")
-            if customer_id and not Customers.objects.filter(id=customer_id).exists():
-                return JsonResponse({"error": "Customer not found"}, status=400)
+            # Deserialize the request data
+            data = request.data.copy()
+            data['user'] = user
+            data['account'] = account.id
 
-            dunningplan_id = data.get("dunningplan")
-            if (
-                dunningplan_id
-                and not DunningPlan.objects.filter(id=dunningplan_id).exists()
-            ):
-                return JsonResponse({"error": "Dunning Plan not found"}, status=400)
-            # Save the invoice
+            # Check if customer exists
+            customer_id = data.get('customerid')
+            if not Customers.objects.filter(id=customer_id).exists():
+                return Response(
+                    {"error": "Customer ID does not exist"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Initialize serializer
             serializer = InvoiceSerializer(data=data)
+
+            # Validate and save
             if serializer.is_valid():
                 invoice = serializer.save()
-                return JsonResponse(
+                return Response(
                     {
                         "success": "Invoice created successfully",
                         "invoice": serializer.data,
                     },
-                    status=201,
+                    status=status.HTTP_201_CREATED,
                 )
-            else:
-                return JsonResponse(
-                    {"error": "Invalid data", "details": serializer.errors},
-                    status=400,
-                )
-        else:
-            return JsonResponse({"error": "Authentication required"}, status=401)
-    else:
+
+            # Log validation errors
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {"error": "Authentication required"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction
+from decimal import Decimal , InvalidOperation
+import pandas as pd
+from .models import Invoices  # Import your Invoices model
+from app_cunsole.customer.models import Account  
+
+
+@csrf_exempt
+def bulk_create_invoices(request):
+    if request.method != "POST":
         return JsonResponse({"error": "Method not allowed."}, status=405)
 
-
-
-def bulk_create_invoices(request):
-    if request.method == "POST":
-        # Check if the user is authenticated (Updated)
+    try:
         if request.user_is_authenticated:
-            user = request.user
-            account = request.user_account
+            user_id = request.user_id
+            account_id = request.user_account.id
 
-            # Handle file upload
             if "file" not in request.FILES:
-                return JsonResponse({"error": "No file provided"}, status=400)
+                return JsonResponse({"error": "No file uploaded"}, status=400)
 
             file = request.FILES["file"]
+            
+            if not file.name.endswith((".csv", ".xlsx")):
+                return JsonResponse(
+                    {"error": "Unsupported file type. Please upload a CSV or Excel file."},
+                    status=400,
+                )
 
-            # Check file extension and read the file into a DataFrame (Updated)
-            if file.name.endswith(".csv"):
-                df = pd.read_csv(file)
-            elif file.name.endswith(".xlsx"):
-                df = pd.read_excel(file)
-            else:
-                return JsonResponse({"error": "Unsupported file format"}, status=400)
+            try:
+                data = pd.read_csv(file) if file.name.endswith(".csv") else pd.read_excel(file)
+            except Exception as e:
+                return JsonResponse({"error": f"Error reading file: {str(e)}"}, status=400)
 
-            # Prepare to collect valid invoice data
-            invoices_data = []
+            required_fields = ["customid", "issuedate", "duedate", "name", "customerid", "total_amount"]
+            missing_fields = [field for field in required_fields if field not in data.columns]
+            if missing_fields:
+                return JsonResponse({"error": f"Missing required fields: {', '.join(missing_fields)}"}, status=400)
 
-            # Validate and process each row (Updated)
-            for index, row in df.iterrows():
-                data = {
-                    "customid": row.get("customid"),
-                    "externalid": row.get("externalid"),
-                    "issuedat": row.get("issuedat"),
-                    "duedate": row.get("duedate"),
-                    "name": row.get("name"),
-                    "currency": row.get("currency"),
-                    "grossamount": row.get("grossamount"),
-                    "netamount": row.get("netamount"),
-                    "account": account.id if account else None,
-                    "customerid": row.get("customerid"),
-                }
+            invoices_to_create = []
+            errors = []
 
-                # Validate customer if provided (Updated)
-                if (
-                    data.get("customerid")
-                    and not Customers.objects.filter(id=data["customerid"]).exists()
-                ):
-                    return JsonResponse(
-                        {"error": f'Customer {data["customerid"]} not found'},
-                        status=400,
+            # Fetch the Account instance
+            try:
+                account = Account.objects.get(id=account_id)
+            except Account.DoesNotExist:
+                return JsonResponse({"error": "Invalid account"}, status=400)
+
+            for index, row in data.iterrows():
+                try:
+                    invoice = Invoices(
+                        customid=row["customid"],
+                        externalid=row.get("externalid"),
+                        issuedate=pd.to_datetime(row["issuedate"]),
+                        duedate=pd.to_datetime(row["duedate"]),
+                        name=row["name"],
+                        currency=row.get("currency", "USD"),
+                        total_amount=Decimal(row["total_amount"]),
+                        paid_amount=Decimal(row.get("paid_amount", 0)),
+                        customerid=row["customerid"],
+                        status=row.get("status", 0),  # Default to 'Due' if not provided
+                        account=account,
+                        user_id=user_id
                     )
+                    invoices_to_create.append(invoice)
+                except (ValueError, InvalidOperation) as e:
+                    errors.append(f"Error in row {index + 2}: {str(e)}")
 
-                # Serialize data (Updated)
-                serializer = InvoiceSerializer(data=data)
-                if serializer.is_valid():
-                    invoices_data.append(serializer.validated_data)
-                else:
-                    return JsonResponse(
-                        {"error": "Invalid data", "details": serializer.errors},
-                        status=400,
-                    )
+            if errors:
+                return JsonResponse({"error": "Validation errors", "details": errors}, status=400)
 
-            # Bulk create invoices (Updated)
-            if invoices_data:
-                invoice_instances = [Invoices(**data) for data in invoices_data]
-                Invoices.objects.bulk_create(invoice_instances)
+            try:
+                with transaction.atomic():
+                    Invoices.objects.bulk_create(invoices_to_create, batch_size=100)
+            except Exception as e:
+                return JsonResponse({"error": f"Error creating invoices: {str(e)}"}, status=500)
 
-            return JsonResponse(
-                {"success": "Invoices created successfully"},
-                status=201,
-            )
-
+            return JsonResponse({"success": f"{len(invoices_to_create)} invoices created successfully"})
         else:
-            return JsonResponse({"error": "Authentication required"}, status=401)
-
-    return JsonResponse({"error": "Method not allowed."}, status=405)
-
-
-
-# @api_view(["GET"])
-# @permission_classes([IsAuthenticated])
-# def get_customers_by_account(request):
-#     try:
-#         # Ensure the user is authenticated (Updated)
-#         if request.user_is_authenticated:
-#             user = request.user
-#             account = request.user_account
-
-#             if not account:
-#                 return Response(
-#                     {"error": "User does not have an associated account"},
-#                     status=status.HTTP_400_BAD_REQUEST,
-#                 )
-
-#             # Fetch customers for the user's account using ORM queries
-#             account_customers = Customers.objects.filter(account_id=account.id)
-
-#             # Serialize the data
-#             serializer = CustomerSerializer(account_customers, many=True)
-
-#             # Return the response
-#             return Response({"customers": serializer.data}, status=status.HTTP_200_OK)
-
-#         return Response(
-#             {"error": "Authentication required"},
-#             status=status.HTTP_401_UNAUTHORIZED,
-#         )
-
-#     except Exception as e:
-#         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return JsonResponse(
+                {"error": "Authentication required"},
+                status=401
+            )
+    except Exception as e:
+        return JsonResponse(
+            {"error": str(e)},
+            status=500
+        )
 
 
 
@@ -295,6 +301,7 @@ def get_customer_invoice_summary(request):
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 
@@ -475,76 +482,148 @@ def get_customer_summary(request, customer_id):
 
 
 
+# current api
+# @api_view(["POST"])
+# def add_payment(request):
+#     """
+#     Create a new payment record.
 
-@api_view(["POST"])
+#     This view requires that the user is authenticated. It uses the data from the request to create a new
+#     payment record linked to the authenticated user's account and the specified invoice. The data is validated
+#     and serialized before saving the new payment record.
+
+#     Returns:
+#         Response: A JSON response indicating the result of the creation attempt.
+#                   If authentication is not provided, returns a 401 Unauthorized error.
+#                   If the data is invalid, returns a 400 Bad Request error.
+#     """
+#     try:
+#         if request.user_is_authenticated:  # Check if the user is authenticated
+#             user = request.user_id  # Get the authenticated user's ID from the middleware
+#             account = request.user_account  # Get the associated account from the middleware
+
+#             if not account:
+#                 return Response(
+#                     {"error": "User does not have an associated account"},
+#                     status=status.HTTP_400_BAD_REQUEST,
+#                 )
+
+#             # Deserialize the request data
+#             data = request.data.copy()
+#             data['user'] = user  # Assign the authenticated user ID
+#             data['account'] = account.id  # Assign the account ID from the user
+            
+#             # Get the invoice ID from the request data and validate
+#             invoice_id = data.get('invoice')
+#             try:
+#                 invoice = Invoices.objects.get(id=invoice_id)
+#             except Invoices.DoesNotExist:
+#                 return Response(
+#                     {"error": "Invoice not found"},
+#                     status=status.HTTP_404_NOT_FOUND,
+#                 )
+            
+#             # Set the invoice for the payment
+#             data['invoice'] = invoice.id
+
+#             # Initialize serializer
+#             serializer = PaymentSerializer(data=data)
+
+#             # Validate and save
+#             if serializer.is_valid():
+#                 payment = serializer.save()
+#                 return Response(
+#                     {
+#                         "success": "Payment created successfully",
+#                         "payment": serializer.data,
+#                     },
+#                     status=status.HTTP_201_CREATED,
+#                 )
+
+#             # Log validation errors
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#         return Response(
+#             {"error": "Authentication required"},
+#             status=status.HTTP_401_UNAUTHORIZED,
+#         )
+
+#     except Exception as e:
+#         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
 def add_payment(request):
     """
-    Create a new payment record.
-
-    This view requires that the user is authenticated. It uses the data from the request to create a new
-    payment record linked to the authenticated user's account and the specified invoice. The data is validated
-    and serialized before saving the new payment record.
-
-    Returns:
-        Response: A JSON response indicating the result of the creation attempt.
-                  If authentication is not provided, returns a 401 Unauthorized error.
-                  If the data is invalid, returns a 400 Bad Request error.
+    Create a new payment and update the corresponding invoice status and amounts.
     """
     try:
-        if request.user_is_authenticated:  # Check if the user is authenticated
-            user = request.user_id  # Get the authenticated user's ID from the middleware
-            account = request.user_account  # Get the associated account from the middleware
+        # Ensure the user is authenticated
+        if not request.user_is_authenticated:
+            return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
 
-            if not account:
-                return Response(
-                    {"error": "User does not have an associated account"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        user = request.user_id  # Get the authenticated user's ID
+        account = request.user_account  # Get the associated account
 
-            # Deserialize the request data
-            data = request.data.copy()
-            data['user'] = user  # Assign the authenticated user ID
-            data['account'] = account.id  # Assign the account ID from the user
-            
-            # Get the invoice ID from the request data and validate
-            invoice_id = data.get('invoice')
-            try:
-                invoice = Invoices.objects.get(id=invoice_id)
-            except Invoices.DoesNotExist:
-                return Response(
-                    {"error": "Invoice not found"},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-            
-            # Set the invoice for the payment
-            data['invoice'] = invoice.id
+        if not account:
+            return Response({"error": "User does not have an associated account"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Initialize serializer
-            serializer = PaymentSerializer(data=data)
+        # Deserialize and validate the payment data
+        data = request.data.copy()
+        data['user'] = user
+        data['account'] = account.id
 
-            # Validate and save
-            if serializer.is_valid():
-                payment = serializer.save()
-                return Response(
-                    {
-                        "success": "Payment created successfully",
-                        "payment": serializer.data,
-                    },
-                    status=status.HTTP_201_CREATED,
-                )
+        # Retrieve the invoice and validate its existence
+        invoice_id = data.get('invoice')
+        try:
+            invoice = Invoices.objects.get(id=invoice_id)
+        except Invoices.DoesNotExist:
+            return Response({"error": "Invoice not found"}, status=status.HTTP_404_NOT_FOUND)
 
-            # Log validation errors
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Calculate the remaining amount
+        amount = float(data.get('amount', 0))
+        remaining_amount = invoice.total_amount - invoice.paid_amount
 
-        return Response(
-            {"error": "Authentication required"},
-            status=status.HTTP_401_UNAUTHORIZED,
-        )
+        if amount > remaining_amount:
+            return Response(
+                {"error": "Payment amount exceeds the remaining balance of the invoice."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Initialize the serializer and validate the data
+        serializer = PaymentSerializer(data=data)
+        if serializer.is_valid():
+            # Save the payment and update invoice status
+            payment = serializer.save()
+
+            new_paid_amount = invoice.paid_amount + amount
+            invoice.paid_amount = new_paid_amount
+
+            # Update the invoice status
+            if new_paid_amount >= invoice.total_amount:
+                invoice.status = Invoices.STATUS_CHOICES[2][0]  # Completed
+            elif new_paid_amount > 0:
+                invoice.status = Invoices.STATUS_CHOICES[1][0]  # Partial
+            else:
+                invoice.status = Invoices.STATUS_CHOICES[0][0]  # Due
+
+            invoice.save()
+
+            # Serialize and return the updated invoice data
+            updated_invoice = InvoiceSerializer(invoice)
+            return Response(
+                {
+                    "success": "Payment created successfully",
+                    "payment": serializer.data,
+                    "invoice": updated_invoice.data,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 
 
 

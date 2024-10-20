@@ -7,7 +7,7 @@ from rest_framework.decorators import api_view, permission_classes
 from django.conf import settings
 
 # from config.settings.base import settings
-
+from decimal import Decimal , InvalidOperation
 from rest_framework.permissions import IsAuthenticated
 from app_cunsole.customer.models import Customers
 from app_cunsole.users.models import User
@@ -24,7 +24,9 @@ from django.core.mail import send_mail
 from django.utils import timezone
 from django.http import JsonResponse
 
+from .models import Account
 
+from django.db import transaction
 
 from .models import  EmailTrigger, Customers
 from django.views import View
@@ -38,58 +40,7 @@ from .models import EmailTrigger
 from .serializers import EmailTriggerSerializer
 from django.views.decorators.csrf import csrf_exempt
 
-
-
-
-
-# @api_view(["POST"])
-# def create_customer(request):
-#     """
-#     Create a new customer record.
-
-#     This view requires that the user is authenticated. It uses the data from the request to create a new
-#     customer record linked to the authenticated user's account. The data is validated and serialized before
-#     saving the new customer record.
-
-#     Returns:
-#         Response: A JSON response indicating the result of the creation attempt.
-#                   If authentication is not provided, returns a 401 Unauthorized error.
-#                   If the data is invalid, returns a 400 Bad Request error.
-#     """
-#     if request.user_is_authenticated:
-#         try:
-#             # Deserialize the request data
-#             data = json.loads(request.body)
-#         except json.JSONDecodeError:
-#             return JsonResponse({"error": "Invalid JSON format"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # Add user and account to the request data
-#         data["user_id"] = request.user_id
-#         data["account"] = request.user_account.id if request.user_account else None
-
-#         # Serialize and validate the data
-#         serializer = CustomerSerializer(data=data)
-
-#         if serializer.is_valid():
-#             # Save the customer instance
-#             customer = serializer.save()
-#             return JsonResponse(
-#                 {
-#                     "success": "Customer created successfully",
-#                     "customer": serializer.data,
-#                 },
-#                 status=status.HTTP_201_CREATED,
-#             )
-#         else:
-#             return JsonResponse(
-#                 {"error": "Invalid data", "details": serializer.errors},
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-#     else:
-#         return JsonResponse(
-#             {"error": "Authentication credentials were not provided."},
-#             status=status.HTTP_401_UNAUTHORIZED,
-#         )
+import pandas as pd
 
 
 
@@ -293,88 +244,104 @@ def get_customer(request, customer_id):
 
 
 
-# bulk create customers api
+# bulk create customers api previsus
 
+
+@csrf_exempt
 def bulk_create_customers(request):
-    if request.method == "POST":
-        # Check if the Authorization header is present
-        header = request.headers.get("Authorization")
-        if header and header.startswith("Bearer "):
-            token = header.split(" ")[1]
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed."}, status=405)
 
-            try:
-                # Decode the JWT token
-                payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-                user_id = payload["user_id"]
-                user = User.objects.get(id=user_id)
-            except jwt.ExpiredSignatureError:
-                return JsonResponse({"error": "Token is expired"}, status=401)
-            except jwt.InvalidTokenError:
-                return JsonResponse({"error": "Invalid token"}, status=401)
-            except User.DoesNotExist:
-                return JsonResponse({"error": "User not found"}, status=401)
+    try:
+        if request.user_is_authenticated:
+            user_id = request.user_id
+            account_id = request.user_account.id
 
-            # Check if a file was uploaded
             if "file" not in request.FILES:
                 return JsonResponse({"error": "No file uploaded"}, status=400)
 
             file = request.FILES["file"]
-
-            # Check file type
-            if not file.name.endswith(".csv") and not file.name.endswith(".xlsx"):
+            
+            if not file.name.endswith((".csv", ".xlsx")):
                 return JsonResponse(
-                    {
-                        "error": "Unsupported file type. Please upload a CSV or Excel file.",
-                    },
+                    {"error": "Unsupported file type. Please upload a CSV or Excel file."},
                     status=400,
                 )
 
-            # Read file
             try:
-                if file.name.endswith(".csv"):
-                    data = pd.read_csv(file)
-                elif file.name.endswith(".xlsx"):
-                    data = pd.read_excel(file)
+                data = pd.read_csv(file) if file.name.endswith(".csv") else pd.read_excel(file)
             except Exception as e:
-                return JsonResponse({"error": str(e)}, status=400)
+                return JsonResponse({"error": f"Error reading file: {str(e)}"}, status=400)
 
-            # Process data
+            required_fields = ["name", "email"]
+            missing_fields = [field for field in required_fields if field not in data.columns]
+            if missing_fields:
+                return JsonResponse({"error": f"Missing required fields: {', '.join(missing_fields)}"}, status=400)
+
             customers_to_create = []
+            errors = []
+
+            # Fetch the Account instance
+            try:
+                account = Account.objects.get(id=account_id)
+            except Account.DoesNotExist:
+                return JsonResponse({"error": "Invalid account"}, status=400)
+
             for index, row in data.iterrows():
-                customer = Customers(
-                    externalid=row["externalid"],
-                    name=row["name"],
-                    email=row["email"],
-                    phone=row["phone"],
-                    address=row["address"],
-                    city=row["city"],
-                    state=row["state"],
-                    country=row["country"],
-                    postalcode=row["postalcode"],
-                    taxid=row["taxid"],
-                    companyname=row["companyname"],
-                    industrytype=row["industrytype"],
-                    paymentterms=row["paymentterms"],
-                    creditlimit=row["creditlimit"],
-                    notes=row["notes"],
-                    isactive=row["isactive"],
-                    account=user.Account,  # Associate with the user's account
-                    user=user,  # Associate with the user who is making the request
-                )
-                customers_to_create.append(customer)
+                try:
+                    customer = Customers(
+                        externalid=row.get("externalid"),
+                        name=row["name"],
+                        email=row["email"],
+                        phone=row.get("phone"),
+                        address=row.get("address"),
+                        city=row.get("city"),
+                        state=row.get("state"),
+                        country=row.get("country"),
+                        postalcode=row.get("postalcode"),
+                        taxid=row.get("taxid"),
+                        companyname=row.get("companyname"),
+                        industrytype=row.get("industrytype"),
+                        paymentterms=row.get("paymentterms"),
+                        creditlimit=Decimal(row.get("creditlimit", 0)),
+                        notes=row.get("notes"),
+                        isactive=row.get("isactive", True),
+                        account=account,  # Use the Account instance
+                        user_id=user_id,  # Use the user ID directly
+                        website=row.get("website"),
+                        currency=row.get("currency", "USD"),
+                        discount=Decimal(row.get("discount", 0)),
+                        account_balance=Decimal(row.get("account_balance", 0)),
+                        customer_category=row.get("customer_category"),
+                        risk_level=row.get("risk_level"),
+                        erp_system=row.get("erp_system"),
+                        crm_id=row.get("crm_id"),
+                        referral_source=row.get("referral_source"),
+                    )
+                    customers_to_create.append(customer)
+                except (ValueError, InvalidOperation) as e:
+                    errors.append(f"Error in row {index + 2}: {str(e)}")
 
-            # Bulk create customers
-            if customers_to_create:
-                Customers.objects.bulk_create(customers_to_create)
+            if errors:
+                return JsonResponse({"error": "Validation errors", "details": errors}, status=400)
 
-            return JsonResponse({"success": "Customers created successfully"})
+            try:
+                with transaction.atomic():
+                    Customers.objects.bulk_create(customers_to_create, batch_size=100)
+            except Exception as e:
+                return JsonResponse({"error": f"Error creating customers: {str(e)}"}, status=500)
 
+            return JsonResponse({"success": f"{len(customers_to_create)} customers created successfully"})
+        else:
+            return JsonResponse(
+                {"error": "Authentication required"},
+                status=401
+            )
+    except Exception as e:
         return JsonResponse(
-            {"error": "Authorization header format is invalid"},
-            status=401,
+            {"error": str(e)},
+            status=500
         )
-
-    return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
 @api_view(["POST"])
@@ -422,59 +389,6 @@ def create_email_trigger(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
-# @api_view(["PUT"])
-# def update_email_trigger(request, trigger_id):
-#     try:
-#         if request.user_is_authenticated:
-#             user = request.user_id
-#             account = request.user_account
-
-#             if not account:
-#                 return Response(
-#                     {"error": "User does not have an associated account"},
-#                     status=status.HTTP_400_BAD_REQUEST,
-#                 )
-
-#             # Get the existing email trigger
-#             try:
-#                 email_trigger = EmailTrigger.objects.get(id=trigger_id, account=account)
-#             except EmailTrigger.DoesNotExist:
-#                 return Response(
-#                     {"error": "Email trigger not found"},
-#                     status=status.HTTP_404_NOT_FOUND,
-#                 )
-
-#             # Prepare data for serializer
-#             data = request.data.copy()
-#             data['user'] = user.id
-#             data['account'] = account.id
-
-#             print("User ID API:", user.id)
-#             print("Account ID API:", account.id)
-#             print("Updated Data API:", data)
-
-#             # Initialize serializer with existing instance and new data
-#             serializer = EmailTriggerSerializer(email_trigger, data=data, partial=True)
-
-#             print("Serializer API:", serializer)
-
-#             # Validate and save
-#             if serializer.is_valid():
-#                 serializer.save()
-#                 return Response(serializer.data, status=status.HTTP_200_OK)
-
-#             # Log validation errors
-#             print("Serializer Errors:", serializer.errors)
-#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-#         return Response(
-#             {"error": "Authentication required"},
-#             status=status.HTTP_401_UNAUTHORIZED,
-#         )
-    
-#     except Exception as e:
-#         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(["PUT"])

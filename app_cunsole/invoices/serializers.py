@@ -37,15 +37,35 @@ class CustomerinvsummarySerializer(serializers.ModelSerializer):
         ]
 
 
+    # def get_total_amount_to_pay(self, obj):
+    #     # Use a different variable name to avoid conflict
+    #     customer_invoices = Invoices.objects.filter(customerid=obj.id)
+    #     return sum(invoice.total_amount for invoice in customer_invoices)
+
+    # def get_total_paid_amount(self, obj):
+    #     # Use a different variable name to avoid conflict
+    #     customer_invoices = Invoices.objects.filter(customerid=obj.id)
+    #     return sum(invoice.paid_amount for invoice in customer_invoices)
+
+
     def get_total_amount_to_pay(self, obj):
-        # Use a different variable name to avoid conflict
-        customer_invoices = Invoices.objects.filter(customerid=obj.id)
-        return sum(invoice.total_amount for invoice in customer_invoices)
+      customer_invoices = Invoices.objects.filter(customerid=obj.id)
+      total = sum(invoice.total_amount or 0 for invoice in customer_invoices)
+    
+    # Debugging log
+    #   print(f"Customer ID: {obj.id}, Total Amounts: {[invoice.total_amount for invoice in customer_invoices]}, Total: {total}")
+    
+      return total
 
     def get_total_paid_amount(self, obj):
-        # Use a different variable name to avoid conflict
-        customer_invoices = Invoices.objects.filter(customerid=obj.id)
-        return sum(invoice.paid_amount for invoice in customer_invoices)
+      customer_invoices = Invoices.objects.filter(customerid=obj.id)
+      total = sum(invoice.paid_amount or 0 for invoice in customer_invoices)
+
+      # Debugging log
+    #   print(f"Customer ID: {obj.id}, Paid Amounts: {[invoice.paid_amount for invoice in customer_invoices]}, Total: {total}")
+    
+      return total
+
 
     def get_invoices(self, obj):
         customer_invoices = Invoices.objects.filter(customerid=obj.id)
