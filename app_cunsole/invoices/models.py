@@ -18,18 +18,17 @@ class Invoices(models.Model):
     duedate = models.DateTimeField(null=True)
     name = models.CharField(max_length=255, blank=True, null=True)
     currency = models.CharField(max_length=3, null=True)
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    paid_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    # total_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    # paid_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     customerid = models.UUIDField()  # Change this to UUIDField to match your database
     status = models.IntegerField(choices=STATUS_CHOICES, null=True, blank=True ,default=0)  # New field
-    # dunningplanid = models.ForeignKey(DunningPlan, on_delete=models.SET_NULL, null=True, blank=True)
-    # dunningplanid = models.UUIDField()  # Change this to UUIDField to match your database
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     file_path = models.URLField(max_length=9000, blank=True, null=True)  # Shortened field name
     updated_at = models.DateTimeField(auto_now=True, null=True)
     reference = models.CharField( blank=True, null=True)  # e.g., transaction ID or check number
     currency_code = models.CharField(max_length=3, blank=True, null=True)
-    
     # new advanced fields
     # Advanced fields
     is_discount_before_tax = models.BooleanField(null=True, blank=True, default=True)
