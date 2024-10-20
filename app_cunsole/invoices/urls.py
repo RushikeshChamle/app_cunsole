@@ -11,18 +11,13 @@ from app_cunsole.users.views import signup
 
 urlpatterns = [
     path(
-        "createinvoice/",
+        "createinvoices/",
         create_invoice,
-        name="create_invoice",
+        name="createinvoices",
     ),  # Endpoint for creating a new invoice
     path("signup/", signup, name="signup"),
     path("signin/", CustomTokenObtainPairView.as_view(), name="signin"),
     # path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-    path(
-        "create_invoice/",
-        create_invoice,
-        name="create_invoice",
-    ),  # Endpoint for creating a new invoice
     path(
         "bulk_invoices/",
         bulk_create_invoices,
@@ -45,5 +40,6 @@ urlpatterns = [
     path('get_top_due_customers/', get_top_due_customers, name='get_top_due_customers'),
     path('invoice_payment_card/', invoice_payment_card, name='invoice_payment_card'),
     path('credit_sales_card_data/', credit_sales_card_data, name='credit_sales_card_data'),
-    
+
+
 ]

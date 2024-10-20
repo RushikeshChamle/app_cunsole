@@ -121,6 +121,7 @@ class EmailProvider(models.Model):
     use_tls = models.BooleanField(default=True)
     use_ssl = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_disabled = models.BooleanField(default=False)
 
 
     class Meta:
@@ -318,6 +319,7 @@ class DNSRecord(models.Model):
     selector = models.CharField(max_length=255, null=True, blank=True)  # DKIM selector (optional)
     created_at = models.DateTimeField(auto_now_add=True)  # When the record was created
     updated_at = models.DateTimeField(auto_now=True)  # When the record was last updated
+    is_disabled = models.BooleanField(default=False)
 
     class Meta:
         db_table = "DNSRecord"

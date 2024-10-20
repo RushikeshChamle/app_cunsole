@@ -25,49 +25,112 @@ class Account(models.Model):
 
 
 
+import uuid
+from django.db import models
+
+
+
+
 class Customers(models.Model):
+    # Basic Details
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    externalid = models.CharField(max_length=255, blank=True, null=True)
+    externalid = models.CharField(max_length=255, blank=True, null=True)  # For syncing with external systems
     name = models.CharField(max_length=255)
+    companyname = models.CharField(max_length=255, blank=True, null=True)
+    industrytype = models.CharField(max_length=100, blank=True, null=True)
+
+    # Contact Information
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=50, blank=True, null=True)
+    website = models.URLField(max_length=255, blank=True, null=True)  # New Field
+
+    # Address Information
     address = models.TextField(blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
     state = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
     postalcode = models.CharField(max_length=20, blank=True, null=True)
+
+    # Financial Information
     taxid = models.CharField(max_length=50, blank=True, null=True)
-    companyname = models.CharField(max_length=255, blank=True, null=True)
-    industrytype = models.CharField(max_length=100, blank=True, null=True)
-    paymentterms = models.CharField(max_length=100, blank=True, null=True)
-    creditlimit = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        blank=True,
-        null=True,
+    currency = models.CharField(max_length=10, default='USD')  # New Field
+    paymentterms = models.CharField(max_length=100, blank=True, null=True)  # e.g., "Net 30", "Net 45"
+    creditlimit = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
+    discount = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)  # New Field
+    account_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)  # New Field
+
+
+# Categorization
+    customer_category = models.CharField(
+        max_length=50, 
+        choices=[('regular', 'Regular'), ('premium', 'Premium'), ('delinquent', 'Delinquent')],
+        blank=True, null=True  # New Field
     )
+    risk_level = models.CharField(
+        max_length=50, 
+        choices=[('low', 'Low'), ('medium', 'Medium'), ('high', 'High')],
+        blank=True, null=True  # New Field
+    )
+
+    # Integrations & Identification
+    erp_system = models.CharField(max_length=100, blank=True, null=True)  # New Field for ERP Integration
+    crm_id = models.CharField(max_length=255, blank=True, null=True)  # Sync with CRM System
+    referral_source = models.CharField(max_length=100, blank=True, null=True)  # Track referrals (New Field)
+
+
+
+    # Notes and Status
     notes = models.TextField(blank=True, null=True)
     isactive = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    account = models.ForeignKey(
-        Account,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-    )
-    user = models.ForeignKey(
-        "users.User",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-    )
+
+    # Relationships
+    account = models.ForeignKey("Account", on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey("users.User", on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
         db_table = "customers"
 
     def __str__(self):
         return self.name
+
+
+
+
+class Customer_contact(models.Model):
+    ROLE_CHOICES = [
+        ("finance_manager", "Finance Manager"),
+        ("ar_specialist", "Accounts Receivable Specialist"),
+        ("ceo", "CEO"),
+        ("cfo", "CFO"),
+        ("accountant", "Accountant"),
+        ("billing_manager", "Billing Manager"),
+        ("collections_agent", "Collections Agent"),
+        ("ap_specialist", "Accounts Payable Specialist"),
+        ("customer_service", "Customer Service Representative"),
+        ("sales_rep", "Sales Representative"),
+        ("legal", "Legal Counsel"),
+        ("other", "Other"),
+    ]
+
+    id = models.AutoField(primary_key=True)
+    customer = models.ForeignKey(Customers, related_name="contacts", on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    email = models.EmailField()
+    phone = models.CharField(max_length=50, blank=True, null=True)
+    role = models.CharField(max_length=50, choices=ROLE_CHOICES)
+    notes = models.TextField(blank=True, null=True)
+    is_disabled = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "cust_contacts"
+
+    def __str__(self):
+        return f"{self.name} ({self.get_role_display()})"
+
+
+
 
 
 
