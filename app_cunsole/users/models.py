@@ -44,69 +44,7 @@ class User(AbstractUser):
 
 
 
-# class EmailConfiguration(models.Model):
-#     id = models.AutoField(primary_key=True)
-#     user = models.ForeignKey(User, on_delete=models.CASCADE)
-#     domain_name = models.CharField(max_length=255, unique=True)
-#     dkim_selector = models.CharField(max_length=50, blank=True, null=True)
-#     dkim_public_key = models.TextField(blank=True, null=True)
-#     dkim_private_key = models.TextField(blank=True, null=True)
-#     spf_record = models.TextField(blank=True, null=True)
-#     is_verified = models.BooleanField(default=False)
-#     is_disabled = models.IntegerField(default=0)  # 0 for enabled, 1 for disabled
-#     created_at = models.DateTimeField(auto_now_add=True)
 
-#     class Meta:
-#         db_table = "email_configuration"
-
-
-# class EmailVerificationLog(models.Model):
-#     id = models.AutoField(primary_key=True)
-#     email_configuration = models.ForeignKey(EmailConfiguration, on_delete=models.CASCADE)
-#     user = models.ForeignKey(User, on_delete=models.CASCADE)  # Links to the User who initiated the verification
-#     account = models.ForeignKey(Account, on_delete=models.CASCADE)  # Links to the associated Account
-#     verification_attempt_at = models.DateTimeField(auto_now_add=True)  # When verification was attempted
-#     verification_status = models.CharField(max_length=50)  # Status: e.g., 'Success', 'Failure'
-#     error_message = models.TextField(blank=True, null=True)  # Error details, if any
-#     verification_type = models.CharField(max_length=10)  # DKIM/SPF (for logging different record types)
-
-#     class Meta:
-#         db_table = "email_verification_log"
-
-
-
-
-
-# class EmailVerificationLog(models.Model):
-#     STATUS_PENDING = 0
-#     STATUS_SUCCESS = 1
-#     STATUS_FAILURE = 2
-
-#     id = models.AutoField(primary_key=True)
-#     email_configuration = models.ForeignKey(EmailConfiguration, on_delete=models.CASCADE)
-#     user = models.ForeignKey(User, on_delete=models.CASCADE)  # Links to the User who initiated the verification
-#     account = models.ForeignKey(Account, on_delete=models.CASCADE)  # Links to the associated Account
-#     verification_attempt_at = models.DateTimeField(auto_now_add=True)  # When verification was attempted
-#     verification_status = models.IntegerField(default=STATUS_PENDING)  # Status as an integer flag
-#     error_message = models.TextField(blank=True, null=True)  # Error details, if any
-#     verification_type = models.CharField(max_length=10)  # DKIM/SPF (for logging different record types)
-
-#     class Meta:
-#         db_table = "email_verification_log"
-
-
-# class GlobalEmailSettings(models.Model):
-#     id = models.AutoField(primary_key=True)
-#     default_sender_email = models.EmailField()
-#     default_dkim_selector = models.CharField(max_length=50, blank=True, null=True)
-#     smtp_server = models.CharField(max_length=255)
-#     smtp_port = models.IntegerField()
-#     smtp_username = models.CharField(max_length=255)
-#     smtp_password = models.CharField(max_length=255)  # Could be stored encrypted
-#     created_at = models.DateTimeField(auto_now_add=True)
-    
-#     class Meta:
-#         db_table = "global_email_settings"
 
 
 
