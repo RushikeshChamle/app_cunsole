@@ -16,4 +16,3 @@ autorestart=true
 user=ubuntu
 " | sudo tee /etc/supervisor/conf.d/celery.conf
 
-
