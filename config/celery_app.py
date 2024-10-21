@@ -31,3 +31,5 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 
 # Auto-discover tasks in all registered apps.
 app.autodiscover_tasks()
+
+
