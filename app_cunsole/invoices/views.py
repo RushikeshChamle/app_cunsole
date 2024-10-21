@@ -552,80 +552,96 @@ def get_customer_summary(request, customer_id):
 #         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 def add_payment(request):
     """
-    Create a new payment and update the corresponding invoice status and amounts.
+    Create a new payment record and update the related invoice.
+
+    Returns:
+        Response: A JSON response with payment and invoice status.
     """
     try:
-        # Ensure the user is authenticated
         if not request.user_is_authenticated:
-            return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
-        user = request.user_id  # Get the authenticated user's ID
-        account = request.user_account  # Get the associated account
+        user = request.user_id  # Authenticated user's ID
+        account = request.user_account  # User's associated account
 
         if not account:
-            return Response({"error": "User does not have an associated account"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "User does not have an associated account"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        # Deserialize and validate the payment data
+        # Deserialize request data
         data = request.data.copy()
         data['user'] = user
         data['account'] = account.id
-        data['is_disabled'] = False  # Ensure this is set
 
-
-        # Retrieve the invoice and validate its existence
+        # Retrieve and validate the invoice
         invoice_id = data.get('invoice')
         try:
             invoice = Invoices.objects.get(id=invoice_id)
         except Invoices.DoesNotExist:
-            return Response({"error": "Invoice not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        # Calculate the remaining amount
-        amount = float(data.get('amount', 0))
-        remaining_amount = invoice.total_amount - invoice.paid_amount
-
-        if amount > remaining_amount:
             return Response(
-                {"error": "Payment amount exceeds the remaining balance of the invoice."},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Invoice not found"},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Initialize the serializer and validate the data
+        # Validate the new payment amount before saving
+        payment_amount = data.get('amount')
+        if payment_amount is None or float(payment_amount) <= 0:
+            return Response(
+                {"error": "Invalid payment amount."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        new_paid_amount = invoice.paid_amount + Decimal(payment_amount)
+
+        # Ensure no overpayment
+        if new_paid_amount > invoice.total_amount:
+            return Response(
+                {"error": "Payment exceeds the invoice total amount."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Initialize the serializer after validation
         serializer = PaymentSerializer(data=data)
-        if serializer.is_valid():
-            # Save the payment and update invoice status
-            payment = serializer.save()
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            new_paid_amount = invoice.paid_amount + amount
-            invoice.paid_amount = new_paid_amount
+        # Save the payment only after validation
+        payment = serializer.save()
 
-            # Update the invoice status
-            if new_paid_amount >= invoice.total_amount:
-                invoice.status = Invoices.STATUS_CHOICES[2][0]  # Completed
-            elif new_paid_amount > 0:
-                invoice.status = Invoices.STATUS_CHOICES[1][0]  # Partial
-            else:
-                invoice.status = Invoices.STATUS_CHOICES[0][0]  # Due
+        # Update the invoice with the new paid amount and status
+        invoice.paid_amount = new_paid_amount
 
-            invoice.save()
+        # Determine the new status of the invoice
+        if invoice.paid_amount == 0:
+            invoice.status = 0  # Due
+        elif invoice.paid_amount < invoice.total_amount:
+            invoice.status = 1  # Partial
+        else:
+            invoice.status = 2  # Completed
 
-            # Serialize and return the updated invoice data
-            updated_invoice = InvoiceSerializer(invoice)
-            return Response(
-                {
-                    "success": "Payment created successfully",
-                    "payment": serializer.data,
-                    "invoice": updated_invoice.data,
-                },
-                status=status.HTTP_201_CREATED,
-            )
+        invoice.save()  # Save the updated invoice
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                "success": "Payment created successfully and invoice updated.",
+                "payment": serializer.data,
+                "invoice_status": invoice.get_status_display(),
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 

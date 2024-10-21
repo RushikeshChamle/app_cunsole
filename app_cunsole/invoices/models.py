@@ -64,6 +64,8 @@ class Invoices(models.Model):
     
 
 
+
+
 class InvoiceDetails(models.Model):
     invoice = models.ForeignKey(Invoices, related_name='invoice_details', on_delete=models.CASCADE)
     item_id = models.CharField(max_length=255)
