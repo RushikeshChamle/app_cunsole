@@ -25,6 +25,18 @@ CACHES = {
     },
 }
 
+# local redis
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": 'redis://localhost:6379/0',  # Ensure this is the correct URL
+#         "OPTIONS": {
+#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+#             "IGNORE_EXCEPTIONS": True,
+#         },
+#     },
+# }
+
 # settings.py
 
 CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Use Redis as a broker

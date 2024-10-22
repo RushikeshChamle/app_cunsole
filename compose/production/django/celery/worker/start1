@@ -4,9 +4,6 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-# Set PYTHONPATH to include the parent directory of 'config'
-export PYTHONPATH="/home/ubuntu/app_cunsole:$PYTHONPATH"
-
 # Use the absolute path to the celery executable
 exec /home/ubuntu/app_cunsole/.venv/bin/celery -A config.celery_app worker -l INFO
 
@@ -18,3 +15,4 @@ autostart=true
 autorestart=true
 user=ubuntu
 " | sudo tee /etc/supervisor/conf.d/celery.conf
+
