@@ -50,6 +50,11 @@ from typing import Optional
 from django.db.models import QuerySet
 from django.contrib.auth import get_user_model
 
+from typing import Optional
+from django.db.models import QuerySet
+from django.contrib.auth.models import User
+
+
 User = get_user_model()
 
 
@@ -92,6 +97,7 @@ class UserUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     def get_object(self, queryset: QuerySet | None = None) -> User:
         assert self.request.user.is_authenticated  # type guard
         return self.request.user
+
 
 
 

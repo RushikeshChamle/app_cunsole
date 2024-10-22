@@ -188,22 +188,136 @@ class Trigger_rule(models.Model):
 
 
 
-# # EmailLog model
-# class EmailLog(models.Model):
-#     recipient_email = models.EmailField()
-#     subject = models.CharField(max_length=255)
-#     body = models.TextField()
-#     sent_at = models.DateTimeField(default=timezone.now)
-#     invoice = models.ForeignKey('invoices.Invoices', on_delete=models.CASCADE, null=True, blank=True)
-#     email_trigger = models.ForeignKey(EmailTrigger, on_delete=models.CASCADE, null=True, blank=True)
-#     account = models.ForeignKey(Account, on_delete=models.CASCADE)
-#     user = models.ForeignKey('users.User', on_delete=models.CASCADE)
 
-#     class Meta:
-#         db_table = "email_log"
 
-#     def __str__(self):
-#         return f"Email to {self.recipient_email} on {self.sent_at}"
+# Communication Templates
+class CommunicationTemplate(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=255)
+    subject = models.CharField(max_length=255)
+    body = models.TextField()
+    type = models.CharField(max_length=50, choices=[
+        ('invoice', 'Invoice'),
+        ('reminder', 'Reminder'),
+        ('late_payment', 'Late Payment'),
+        ('thank_you', 'Thank You'),
+        ('custom', 'Custom')
+    ])
+    account = models.ForeignKey('customer.Account', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "communication_templates"
+
+
+
+# Communication Log
+class CommunicationLog(models.Model):
+    id = models.AutoField(primary_key=True)
+    customer = models.ForeignKey('customer.Customers', on_delete=models.CASCADE)
+    invoice = models.ForeignKey('invoices.Invoices', on_delete=models.CASCADE, null=True, blank=True)
+    template = models.ForeignKey(CommunicationTemplate, on_delete=models.SET_NULL, null=True, blank=True)
+    subject = models.CharField(max_length=255)
+    body = models.TextField()
+    sent_at = models.DateTimeField(auto_now_add=True)
+    sent_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True)
+    status = models.CharField(max_length=20, choices=[
+        ('sent', 'Sent'),
+        ('delivered', 'Delivered'),
+        ('opened', 'Opened'),
+        ('clicked', 'Clicked'),
+        ('bounced', 'Bounced')
+    ])
+    channel = models.CharField(max_length=20, choices=[
+        ('email', 'Email'),
+        ('sms', 'SMS'),
+        ('letter', 'Letter')
+    ])
+
+    class Meta:
+        db_table = "communication_log"
+
+
+
+# Workflow
+class Workflow(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    account = models.ForeignKey('customer.Account', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "workflows"
+
+
+# Workflow Step
+class WorkflowStep(models.Model):
+    id = models.AutoField(primary_key=True)
+    workflow = models.ForeignKey(Workflow, on_delete=models.CASCADE, related_name='steps')
+    order = models.PositiveIntegerField()
+    action_type = models.CharField(max_length=50, choices=[
+        ('send_email', 'Send Email'),
+        ('send_sms', 'Send SMS'),
+        ('create_task', 'Create Task'),
+        ('update_invoice', 'Update Invoice')
+    ])
+    template = models.ForeignKey(CommunicationTemplate, on_delete=models.SET_NULL, null=True, blank=True)
+    delay_days = models.PositiveIntegerField(default=0)
+    condition = models.TextField(blank=True, null=True)  # JSON field for conditions
+
+    class Meta:
+        db_table = "workflow_steps"
+        ordering = ['order']
+
+# Task
+class Task(models.Model):
+    id = models.AutoField(primary_key=True)
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    due_date = models.DateTimeField()
+    assigned_to = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, related_name='assigned_tasks')
+    created_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, related_name='created_tasks')
+    customer = models.ForeignKey('customer.Customers', on_delete=models.CASCADE, null=True, blank=True)
+    invoice = models.ForeignKey('invoices.Invoices', on_delete=models.CASCADE, null=True, blank=True)
+    status = models.CharField(max_length=20, choices=[
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled')
+    ])
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "tasks"
+
+
+
+# Dispute
+class Dispute(models.Model):
+    id = models.AutoField(primary_key=True)
+    invoice = models.ForeignKey('invoices.Invoices', on_delete=models.CASCADE)
+    customer = models.ForeignKey('customer.Customers', on_delete=models.CASCADE)
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=[
+        ('open', 'Open'),
+        ('under_review', 'Under Review'),
+        ('resolved', 'Resolved'),
+        ('closed', 'Closed')
+    ])
+    opened_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, related_name='opened_disputes')
+    assigned_to = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, related_name='assigned_disputes')
+    resolution = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "disputes"
 
 
 
