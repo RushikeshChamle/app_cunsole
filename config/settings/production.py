@@ -293,7 +293,15 @@ CACHES = {
 
 
 # Celery configuration
-CELERY_BROKER_URL = 'REDIS_URL=redis://:VH9aY6ZZy6Qb6ulVZNjPffT9z7ralsTkkAzCaJrAIhI=@redis-cunsole.redis.cache.windows.net:6380'  # Use Redis as a broker
+# CELERY_BROKER_URL = 'REDIS_URL=redis://:VH9aY6ZZy6Qb6ulVZNjPffT9z7ralsTkkAzCaJrAIhI=@redis-cunsole.redis.cache.windows.net:6380'  # Use Redis as a broker
+
+# Correct format
+CELERY_BROKER_URL = env("REDIS_URL", default="redis://:VH9aY6ZZy6Qb6ulVZNjPffT9z7ralsTkkAzCaJrAIhI=@redis-cunsole.redis.cache.windows.net:6379")
+
+# Also add result backend
+CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+
+
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 
