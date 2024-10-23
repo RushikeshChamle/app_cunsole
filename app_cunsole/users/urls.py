@@ -27,19 +27,12 @@ urlpatterns = [
     path("create_account/", create_account, name="create_account"),
     path("signin/", CustomTokenObtainPairView.as_view(), name="signin"),
     path('accounts_users/', get_accounts_and_users, name='accounts_users'),
+    # path('generate-email/', generate_email_view, name='generate-email'),
 
-    # # Email Providers
-    # path('providers/', email_provider_list, name='email-provider-list'),   # List all providers or create a new one
-    # path('providers/<int:pk>/', email_provider_detail, name='email-provider-detail'),  # Retrieve, update, or delete a specific provider
 
-    # # Email Configurations
-    # path('configurations/', email_configuration_list, name='email-configuration-list'),  # List all configurations or create a new one
-    # path('configurations/<int:pk>/', email_configuration_detail, name='email-configuration-detail'),  # Retrieve, update, or delete a specific configuration
-
-    # # Email Verification Logs
-    # path('verification-logs/', email_verification_log_list, name='email-verification-log-list'),  # List all verification logs or create a new log
-    # path('verification-logs/<int:pk>/', email_verification_log_detail, name='email-verification-log-detail'),  # Retrieve, update, or delete a specific log
-    # path('configurations/<int:pk>/generate-dkim/', generate_dkim_record, name='generate-dkim'),
+    # Open ai api
+    path('generate/', views.generate_text, name='generate_text'),
+    path('generate-email/', views.generate_email_view, name='generate_email'),
 
 
      # EmailProvider URLs
