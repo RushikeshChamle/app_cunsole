@@ -47,7 +47,7 @@ def verify_spf_record(email_configuration):
 
 def verify_dns_records(email_configuration):
     results = {}
-    
+
     # Verify DKIM record
     dkim_record = email_configuration.generate_dkim_record()
     try:
@@ -60,7 +60,7 @@ def verify_dns_records(email_configuration):
         results['dkim'] = 'DKIM record not found'
     except Exception as e:
         results['dkim'] = f'DKIM verification error: {str(e)}'
-    
+
     # Verify SPF record
     try:
         answers = dns.resolver.resolve(email_configuration.domain_name, 'TXT')
@@ -73,7 +73,7 @@ def verify_dns_records(email_configuration):
         results['spf'] = 'SPF record not found'
     except Exception as e:
         results['spf'] = f'SPF verification error: {str(e)}'
-    
+
     return results
 
 
@@ -124,14 +124,14 @@ def generate_dkim_keys():
 #         results (dict): A dictionary with DKIM and SPF validation status.
 #     """
 #     results = {}
-    
+
 #     # Verify DKIM record
 #     dkim_record = email_configuration.generate_dkim_record()
 #     try:
 
 #         # Query the DNS for the DKIM record using the domain and selector
 #         answers = dns.resolver.resolve(f"{email_configuration.dkim_selector}._domainkey.{email_configuration.domain_name}", 'TXT')
-        
+
 #         # Check if the expected DKIM record is in the DNS response
 #         if any(dkim_record in str(rdata) for rdata in answers):
 #             results['dkim'] = 'Valid'
@@ -147,7 +147,7 @@ def generate_dkim_keys():
 
 #         # Query the DNS for TXT records of the domain
 #         answers = dns.resolver.resolve(email_configuration.domain_name, 'TXT')
-        
+
 #         # Look for the SPF record that starts with 'v=spf1
 #         spf_record = next((str(rdata) for rdata in answers if str(rdata).startswith('v=spf1')), None)
 #         if spf_record:
@@ -164,7 +164,7 @@ def generate_dkim_keys():
 
 def verify_dns_records(email_configuration):
     results = {}
-    
+
     # Verify DKIM record
     dkim_record = email_configuration.generate_dkim_record()
     print(f"Checking DKIM record for {dkim_record}...")
@@ -179,7 +179,7 @@ def verify_dns_records(email_configuration):
         results['dkim'] = 'DKIM record not found'
     except Exception as e:
         results['dkim'] = f'DKIM verification error: {str(e)}'
-    
+
     # Verify SPF record
     print(f"Checking SPF record for {email_configuration.domain_name}...")
     try:
@@ -194,7 +194,7 @@ def verify_dns_records(email_configuration):
         results['spf'] = 'SPF record not found'
     except Exception as e:
         results['spf'] = f'SPF verification error: {str(e)}'
-    
+
     return results
 
 
@@ -322,17 +322,17 @@ def add_domain_to_ses(domain):
     try:
         # Verify domain identity
         ses_client.verify_domain_identity(Domain=domain)
-        
+
         # Generate DKIM tokens
         dkim_tokens = ses_client.verify_domain_dkim(Domain=domain)['DkimTokens']
-        
+
         # Set MAIL FROM domain
         mail_from_domain = f"mail.{domain}"
         ses_client.set_identity_mail_from_domain(
             Identity=domain,
             MailFromDomain=mail_from_domain
         )
-        
+
         return {
             'dkim_tokens': dkim_tokens,
             'mail_from_domain': mail_from_domain
@@ -347,7 +347,7 @@ def get_verification_status(domain):
         response = ses_client.get_identity_verification_attributes(
             Identities=[domain]
         )
-        return response['VerificationAttributes'][domain]['VerificationStatus']
+        return response.VerificationAttributes[domain].VerificationStatus
     except ClientError as e:
         print(f"Error getting verification status: {e}")
         return None
@@ -355,7 +355,7 @@ def get_verification_status(domain):
 
 def generate_dns_records(domain, dkim_tokens, mail_from_domain):
     records = []
-    
+
     # DKIM records
     for token in dkim_tokens:
         records.append({
@@ -364,33 +364,173 @@ def generate_dns_records(domain, dkim_tokens, mail_from_domain):
             'value': f"{token}.dkim.amazonses.com",
             'selector': token
         })
-    
+
     # SPF record
     records.append({
         'record_type': 'TXT',
         'name': domain,
         'value': "v=spf1 include:amazonses.com ~all"
     })
-    
+
     # DMARC record
     records.append({
         'record_type': 'TXT',
         'name': f"_dmarc.{domain}",
         'value': "v=DMARC1; p=none;"
     })
-    
+
     # MAIL FROM MX record
     records.append({
         'record_type': 'MX',
         'name': mail_from_domain,
         'value': f"10 feedback-smtp.{settings.AWS_REGION}.amazonses.com"
     })
-    
+
     # MAIL FROM SPF record
     records.append({
         'record_type': 'TXT',
         'name': mail_from_domain,
         'value': "v=spf1 include:amazonses.com ~all"
     })
-    
+
     return records
+
+
+# from openai import OpenAI
+# from django.conf import settings
+
+# # Initialize the OpenAI client
+# client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+# import logging
+
+# def generate_email(subject, customer_name, due_date, invoice_amount):
+#     prompt = f"""
+#     Create a professional and polite payment reminder email.
+#     - Subject: {subject}
+#     - Customer Name: {customer_name}
+#     - Invoice Amount: {invoice_amount}
+#     - Due Date: {due_date}
+#     The tone should be friendly but firm, encouraging timely payment.
+#     """
+#     logging.debug("Generated prompt: %s", prompt)
+
+#     # Using the ChatCompletion method for the gpt-3.5-turbo model
+#     response = client.chat.completions.create(
+#         model="gpt-4o-mini",
+#         messages=[
+#             {"role": "user", "content": prompt}
+#         ],
+#         max_tokens=200,
+#         temperature=0.7,
+#     )
+
+#     if 'choices' not in response or not response['choices']:
+#         raise ValueError("Invalid response from OpenAI API")
+
+#     return response['choices'][0]['message']['content'].strip()
+
+
+
+
+import openai
+from django.conf import settings
+from openai import AzureOpenAI
+
+class AzureOpenAIService:
+    def __init__(self):
+        self.client = AzureOpenAI(
+            api_key=settings.AZURE_OPENAI_KEY,
+            api_version=settings.AZURE_API_VERSION,
+            azure_endpoint=settings.AZURE_OPENAI_ENDPOINT
+        )
+
+    def generate_response(self, prompt, max_tokens=500):
+        try:
+            response = self.client.chat.completions.create(
+                model=settings.AZURE_DEPLOYMENT_NAME,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=max_tokens,
+                temperature=0.7,
+            )
+            return {
+                'status': 'success',
+                'data': response.choices[0].message.content
+            }
+        except Exception as e:
+            return {
+                'status': 'error',
+                'message': str(e)
+            }
+        
+
+from openai import AzureOpenAI
+from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
+
+class EmailGenerator:
+    def __init__(self):
+        self.client = AzureOpenAI(
+            api_key=settings.AZURE_OPENAI_KEY,
+            api_version=settings.AZURE_API_VERSION,
+            azure_endpoint=settings.AZURE_OPENAI_ENDPOINT
+        )
+
+    def _create_prompt(self, subject, customer_name, due_date, invoice_amount):
+        prompt = f"""
+        Create a professional and polite payment reminder email with the following details:
+        
+        REQUIREMENTS:
+        - Subject: {subject}
+        - Customer Name: {customer_name}
+        - Invoice Amount: {invoice_amount}
+        - Due Date: {due_date}
+        
+        GUIDELINES:
+        - Tone should be professional and courteous
+        - Include clear payment instructions
+        - Mention the invoice details
+        - End with a professional signature
+        - Format with proper spacing and paragraphs
+        
+        Please format the response as:
+        SUBJECT: [Email Subject]
+        
+        [Email Body]
+        """
+        logger.debug("Generated prompt: %s", prompt)
+        return prompt
+
+    def generate_email(self, subject, customer_name, due_date, invoice_amount):
+        try:
+            prompt = self._create_prompt(
+                subject=subject,
+                customer_name=customer_name,
+                due_date=due_date,
+                invoice_amount=invoice_amount
+            )
+
+            response = self.client.chat.completions.create(
+                model=settings.AZURE_DEPLOYMENT_NAME,
+                messages=[
+                    {"role": "system", "content": "You are a professional accounts receivable specialist crafting payment reminder emails."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=500,
+                temperature=0.7,
+            )
+
+            generated_text = response.choices[0].message.content.strip()
+            
+            # Log successful generation
+            logger.info(f"Successfully generated email for customer: {customer_name}")
+            
+            return generated_text
+
+        except Exception as e:
+            logger.error(f"Error generating email: {str(e)}", exc_info=True)
+            raise

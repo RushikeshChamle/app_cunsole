@@ -951,3 +951,133 @@ def get_account_domains(request):
             {"error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+    
+
+
+
+# from rest_framework.decorators import api_view
+# from rest_framework.response import Response
+# from .utils import generate_email
+
+# from rest_framework import status
+
+
+# @api_view(['POST'])
+# def generate_email_view(request):
+#     try:
+#         data = request.data
+#         email_text = generate_email(
+#             subject=data.get('subject'),
+#             customer_name=data.get('customer_name'),
+#             due_date=data.get('due_date'),
+#             invoice_amount=data.get('invoice_amount')
+#         )
+#         return Response({"email_text": email_text}, status=status.HTTP_200_OK)
+#     except Exception as e:
+#         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+
+
+
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from .utils import AzureOpenAIService
+
+@api_view(['POST'])
+def generate_text(request):
+    try:
+        # Print request data for debugging
+        print("Received request data:", request.data)
+        
+        prompt = request.data.get('prompt')
+        if not prompt:
+            return Response({
+                'status': 'error',
+                'message': 'Prompt is required'
+            }, status=400)
+
+        ai_service = AzureOpenAIService()
+        response = ai_service.generate_response(prompt)
+        
+        if response['status'] == 'error':
+            return Response(response, status=500)
+            
+        return Response(response)
+
+    except Exception as e:
+        return Response({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+
+
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from .utils import EmailGenerator
+from django.core.exceptions import ValidationError
+from decimal import Decimal
+import datetime
+
+@api_view(['POST'])
+def generate_email_view(request):
+    try:
+        # Validate input data
+        data = request.data
+        required_fields = ['subject', 'customer_name', 'due_date', 'invoice_amount']
+        
+        # Check for missing fields
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        if missing_fields:
+            return Response(
+                {"error": f"Missing required fields: {', '.join(missing_fields)}"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate date format
+        try:
+            # Assuming date format is YYYY-MM-DD
+            due_date = datetime.datetime.strptime(data['due_date'], '%Y-%m-%d').date()
+        except ValueError:
+            return Response(
+                {"error": "Invalid date format. Please use YYYY-MM-DD"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate invoice amount
+        try:
+            invoice_amount = Decimal(data['invoice_amount'])
+            if invoice_amount <= 0:
+                raise ValidationError("Invoice amount must be greater than 0")
+        except (ValueError, ValidationError) as e:
+            return Response(
+                {"error": "Invalid invoice amount"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Generate email
+        email_generator = EmailGenerator()
+        email_text = email_generator.generate_email(
+            subject=data['subject'],
+            customer_name=data['customer_name'],
+            due_date=data['due_date'],
+            invoice_amount=str(invoice_amount)
+        )
+
+        return Response({
+            "status": "success",
+            "email_text": email_text
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        logger.error(f"Error in generate_email_view: {str(e)}", exc_info=True)
+        return Response({
+            "status": "error",
+            "message": "An error occurred while generating the email",
+            "detail": str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

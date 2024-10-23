@@ -9,6 +9,7 @@ exec /home/ubuntu/app_cunsole/.venv/bin/celery -A config.celery_app worker -l IN
 
 # Create the Supervisor configuration for Celery
 echo "[program:celery]
+
 command=/home/ubuntu/app_cunsole/.venv/bin/celery -A config.celery_app worker -l INFO
 directory=$(pwd)
 autostart=true

@@ -31,6 +31,33 @@ CACHES = {
     },
 }
 
+
+# import os
+# OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# from pathlib import Path
+# from dotenv import load_dotenv
+# import os
+
+# load_dotenv()
+
+# OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+
+
+
+from pathlib import Path
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+# Azure OpenAI Settings
+AZURE_OPENAI_KEY = "bb427a8734f34842b5439b6b6c1327ea"  # Replace with your full key
+AZURE_OPENAI_ENDPOINT = "https://cunsole.openai.azure.com"
+AZURE_DEPLOYMENT_NAME = "gpt-4o-mini"
+AZURE_API_VERSION = "2024-08-01-preview"
+
+
 # local redis
 # CACHES = {
 #     "default": {

@@ -42,6 +42,10 @@ CACHES = {
     },
 }
 
+import os
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+
 # SECURITY
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-proxy-ssl-header
@@ -135,7 +139,15 @@ EMAIL_SUBJECT_PREFIX = env(
 # ADMIN
 # ------------------------------------------------------------------------------
 # Django Admin URL regex.
-ADMIN_URL = env("DJANGO_ADMIN_URL")
+# ADMIN_URL = env("DJANGO_ADMIN_URL")
+
+
+
+# Initialize the environment variables
+
+
+# Set the default value for ADMIN_URL
+ADMIN_URL = env("DJANGO_ADMIN_URL", default="/444/")
 
 # Anymail
 # ------------------------------------------------------------------------------
