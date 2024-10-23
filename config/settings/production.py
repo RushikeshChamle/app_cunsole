@@ -1,10 +1,10 @@
 # ruff: noqa: E501
 import logging
 
-import sentry_sdk
-from sentry_sdk.integrations.django import DjangoIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
-from sentry_sdk.integrations.redis import RedisIntegration
+# import sentry_sdk
+# from sentry_sdk.integrations.django import DjangoIntegration
+# from sentry_sdk.integrations.logging import LoggingIntegration
+# from sentry_sdk.integrations.redis import RedisIntegration
 
 from .base import *  # noqa: F403
 from .base import DATABASES
@@ -44,6 +44,14 @@ CACHES = {
 
 import os
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+
+# Celery configuration
+CELERY_BROKER_URL = 'REDIS_URL=rediss://:VH9aY6ZZy6Qb6ulVZNjPffT9z7ralsTkkAzCaJrAIhI=@redis-cunsole.redis.cache.windows.net:6380'  # Use Redis as a broker
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+
+
 
 
 # SECURITY
@@ -157,10 +165,10 @@ INSTALLED_APPS += ["anymail"]
 # https://anymail.readthedocs.io/en/stable/installation/#anymail-settings-reference
 # https://anymail.readthedocs.io/en/stable/esps/brevo/
 EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
-ANYMAIL = {
-    "BREVO_API_KEY": env("BREVO_API_KEY"),
-    "BREVO_API_URL": env("BREVO_API_URL", default="https://api.brevo.com/v3/"),
-}
+# ANYMAIL = {
+#     "BREVO_API_KEY": env("BREVO_API_KEY"),
+#     "BREVO_API_URL": env("BREVO_API_URL", default="https://api.brevo.com/v3/"),
+# }
 
 
 # LOGGING
@@ -203,20 +211,20 @@ LOGGING = {
 
 # Sentry
 # ------------------------------------------------------------------------------
-SENTRY_DSN = env("SENTRY_DSN")
-SENTRY_LOG_LEVEL = env.int("DJANGO_SENTRY_LOG_LEVEL", logging.INFO)
+# SENTRY_DSN = env("SENTRY_DSN")
+# SENTRY_LOG_LEVEL = env.int("DJANGO_SENTRY_LOG_LEVEL", logging.INFO)
 
-sentry_logging = LoggingIntegration(
-    level=SENTRY_LOG_LEVEL,  # Capture info and above as breadcrumbs
-    event_level=logging.ERROR,  # Send errors as events
-)
-integrations = [sentry_logging, DjangoIntegration(), RedisIntegration()]
-sentry_sdk.init(
-    dsn=SENTRY_DSN,
-    integrations=integrations,
-    environment=env("SENTRY_ENVIRONMENT", default="production"),
-    traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
-)
+# sentry_logging = LoggingIntegration(
+#     level=SENTRY_LOG_LEVEL,  # Capture info and above as breadcrumbs
+#     event_level=logging.ERROR,  # Send errors as events
+# )
+# integrations = [sentry_logging, DjangoIntegration(), RedisIntegration()]
+# sentry_sdk.init(
+#     dsn=SENTRY_DSN,
+#     integrations=integrations,
+#     environment=env("SENTRY_ENVIRONMENT", default="production"),
+#     traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
+# )
 
 
 # django-rest-framework
