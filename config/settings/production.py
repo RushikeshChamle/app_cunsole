@@ -261,19 +261,36 @@ DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)
 
 # CACHES
 # ------------------------------------------------------------------------------
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": env("REDIS_URL"),
+#         "OPTIONS": {
+#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+#             # Mimicking memcache behavior.
+#             # https://github.com/jazzband/django-redis#memcached-exceptions-behavior
+#             "KEY_PREFIX": env("CACHE_KEY_PREFIX", default="cunsole"),  # Optional prefix for cache keys
+#             "TIMEOUT": env.int("CACHE_TIMEOUT", default=300),  # Default timeout for cache
+#         },
+#     },
+# }
+
+
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": env("REDIS_URL"),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            # Mimicking memcache behavior.
+            # Mimicing memcache behavior.
             # https://github.com/jazzband/django-redis#memcached-exceptions-behavior
-            "KEY_PREFIX": env("CACHE_KEY_PREFIX", default="cunsole"),  # Optional prefix for cache keys
-            "TIMEOUT": env.int("CACHE_TIMEOUT", default=300),  # Default timeout for cache
+            "IGNORE_EXCEPTIONS": True,
         },
     },
 }
+
+
 
 # Celery configuration
 CELERY_BROKER_URL = 'REDIS_URL=rediss://:VH9aY6ZZy6Qb6ulVZNjPffT9z7ralsTkkAzCaJrAIhI=@redis-cunsole.redis.cache.windows.net:6380'  # Use Redis as a broker
