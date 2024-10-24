@@ -37,15 +37,7 @@ class CustomerinvsummarySerializer(serializers.ModelSerializer):
         ]
 
 
-    # def get_total_amount_to_pay(self, obj):
-    #     # Use a different variable name to avoid conflict
-    #     customer_invoices = Invoices.objects.filter(customerid=obj.id)
-    #     return sum(invoice.total_amount for invoice in customer_invoices)
 
-    # def get_total_paid_amount(self, obj):
-    #     # Use a different variable name to avoid conflict
-    #     customer_invoices = Invoices.objects.filter(customerid=obj.id)
-    #     return sum(invoice.paid_amount for invoice in customer_invoices)
 
 
     def get_total_amount_to_pay(self, obj):
