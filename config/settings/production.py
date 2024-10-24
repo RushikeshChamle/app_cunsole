@@ -305,7 +305,10 @@ CELERY_RESULT_BACKEND = CELERY_BROKER_URL
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 
-
+EMAIL_BACKEND = env(
+    "DJANGO_EMAIL_BACKEND",
+    default="anymail.backends.amazon_ses.EmailBackend",
+)
 
 # SENTRY Configuration
 # Uncomment the following if using Sentry and ensure SENTRY_DSN is set
