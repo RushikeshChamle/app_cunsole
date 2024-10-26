@@ -1092,7 +1092,7 @@ def generate_email_view(request):
 
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
-from .tasks import send_test_email
+from .tasks import send_test_emails
 
 @api_view(['POST'])
 def trigger_email_test(request):
@@ -1106,7 +1106,7 @@ def trigger_email_test(request):
     }
 
     # Call the Celery task to send the email
-    task = send_test_email.delay(email_data)
+    task = send_test_emails.delay(email_data)
 
     return JsonResponse({
         'status': 'success',

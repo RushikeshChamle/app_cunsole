@@ -14,7 +14,7 @@ from celery import shared_task
 from django.core.mail import send_mail
 
 @shared_task
-def send_test_email(email_data):
+def send_test_emails(email_data):
     """
     Send a test email using Celery.
     """
