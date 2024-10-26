@@ -1081,3 +1081,73 @@ def generate_email_view(request):
             "message": "An error occurred while generating the email",
             "detail": str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+
+
+
+
+
+    # testing email
+
+from django.http import JsonResponse
+from rest_framework.decorators import api_view
+from .tasks import send_test_email
+
+@api_view(['POST'])
+def trigger_email_test(request):
+    """
+    Trigger a test email to be sent.
+    """
+    email_data = {
+        'subject': 'Test Email Subject',
+        'message': 'This is a test email message.',
+        'recipient_list': [request.data.get('email')]
+    }
+
+    # Call the Celery task to send the email
+    task = send_test_email.delay(email_data)
+
+    return JsonResponse({
+        'status': 'success',
+        'task_id': task.id,
+        'message': 'Email is being sent.'
+    })
+
+
+from django.http import JsonResponse
+from celery.result import AsyncResult
+import logging
+
+# Set up logging
+logger = logging.getLogger(__name__)
+
+def check_email_status(request, task_id):
+    try:
+        task_result = AsyncResult(task_id)
+        
+        if task_result.state == 'PENDING':
+            response = {
+                'task_id': task_id,
+                'status': task_result.state,
+                'result': None,
+            }
+        elif task_result.state != 'FAILURE':
+            response = {
+                'task_id': task_id,
+                'status': task_result.state,
+                'result': task_result.result,
+            }
+        else:
+            # Task failed
+            response = {
+                'task_id': task_id,
+                'status': task_result.state,
+                'result': str(task_result.info),  # Error message
+            }
+        
+        return JsonResponse(response)
+    
+    except Exception as e:
+        logger.error(f"Error checking email status for task {task_id}: {str(e)}")
+        return JsonResponse({'error': 'An unexpected error occurred', 'details': str(e)}, status=500)
