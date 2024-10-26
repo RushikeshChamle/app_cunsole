@@ -296,10 +296,16 @@ CACHES = {
 # CELERY_BROKER_URL = 'REDIS_URL=redis://:VH9aY6ZZy6Qb6ulVZNjPffT9z7ralsTkkAzCaJrAIhI=@redis-cunsole.redis.cache.windows.net:6380'  # Use Redis as a broker
 
 # Correct format
-CELERY_BROKER_URL = env("REDIS_URL", default="redis://:VH9aY6ZZy6Qb6ulVZNjPffT9z7ralsTkkAzCaJrAIhI=@redis-cunsole.redis.cache.windows.net:6379")
+# CELERY_BROKER_URL = env("REDIS_URL", default="redis://:VH9aY6ZZy6Qb6ulVZNjPffT9z7ralsTkkAzCaJrAIhI=@redis-cunsole.redis.cache.windows.net:6379")
 
-# Also add result backend
-CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+# # Also add result backend
+# CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+
+CELERY_BROKER_URL = 'redis://:VH9aY6ZZy6Qb6ulVZNjPffT9z7ralsTkkAzCaJrAIhI=@redis-cunsole.redis.cache.windows.net:6379/0' 
+CELERY_RESULT_BACKEND= 'redis://:VH9aY6ZZy6Qb6ulVZNjPffT9z7ralsTkkAzCaJrAIhI=@redis-cunsole.redis.cache.windows.net:6379/0' 
+ # Use Redis as a broker
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
 
 
 CELERY_ACCEPT_CONTENT = ['json']

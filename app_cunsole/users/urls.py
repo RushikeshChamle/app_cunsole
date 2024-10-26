@@ -66,6 +66,11 @@ urlpatterns = [
     path('get_account_domains/', views.get_account_domains, name='domainconfig-list'),
 
 
+# testing dummy email flow
+    path('trigger_email_test/', views.trigger_email_test, name='trigger_email_test'),
+    path('check_email_status/<str:task_id>/', views.check_email_status, name='check_email_status'),
+
+
 
 ]
 

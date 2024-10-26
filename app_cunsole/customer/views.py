@@ -1,6 +1,5 @@
 import json
 from venv import logger
-
 import jwt
 from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
@@ -22,6 +21,7 @@ from django.shortcuts import render, get_object_or_404
 from django.core.mail import send_mail
 from django.utils import timezone
 from django.http import JsonResponse
+
 
 from .models import Account
 
@@ -100,59 +100,6 @@ def create_customer(request):
 
 
 
-# @api_view(['GET'])
-# def get_active_customers_by_account(request):
-
-#         # Check if the user is authenticated
-#         # if request.user_is_authenticated:
-#             user = request.user_id
-#             account = request.user_account
-
-#             if not account:
-#                 return Response(
-#                     {"error": "User does not have an associated account"},
-#                     status=status.HTTP_400_BAD_REQUEST,
-#                 )
-
-#             # Handle GET request - Retrieve active customers by account
-#             if request.method == 'GET':
-#                 active_customers = Customers.objects.filter(account=account, isactive=True)
-#                 serializer = CustomerSerializer(active_customers, many=True)
-#                 return Response(serializer.data, status=status.HTTP_200_OK)
-
-#             # Handle POST request - Create a new customer
-#             # elif request.method == 'POST':
-#             #     # Prepare data for serialization
-#             #     data = request.data.copy()
-#             #     data['user'] = user  # Add the user ID from the token
-#             #     data['account'] = account.id  # Add the account ID
-
-#             #     # Initialize the serializer with the request data
-#             #     serializer = CustomerSerializer(data=data)
-
-#             #     # Validate and save the customer data
-#             #     if serializer.is_valid():
-#             #         customer = serializer.save()
-#             #         return Response(
-#             #             {
-#             #                 "success": "Customer created successfully",
-#             #                 "customer": serializer.data,
-#             #             },
-#             #             status=status.HTTP_201_CREATED,
-#             #         )
-
-#             #     # If the validation fails, return errors
-#             #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-#         # If the user is not authenticated, return a 401 error
-#         # return Response(
-#         #     {"error": "Authentication required"},
-#         #     status=status.HTTP_401_UNAUTHORIZED,
-#         # )
-
-#     # Catch any unexpected exceptions and return a 500 error
-#     # except Exception as e:
-#         # return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET'])
@@ -582,51 +529,7 @@ def get_customers_by_account(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# previous genric logic
-# @shared_task
-# def send_reminders_emails_task():
-#     today = timezone.now().date()
-#     triggers = EmailTrigger.objects.filter(isactive=True)
-#     sent_emails_info = []
 
-#     for trigger in triggers:
-#         if trigger.condition_type == 0:  # Before Due Date
-#             target_date = today + timezone.timedelta(days=trigger.days_offset)
-#         elif trigger.condition_type == 1:  # On Due Date
-#             target_date = today
-#         elif trigger.condition_type == 2:  # After Due Date
-#             target_date = today - timezone.timedelta(days=trigger.days_offset)
-#         else:
-#             continue
-
-#         invoices = Invoices.objects.filter(
-#             duedate=target_date,
-#             status__in=[0, 1],  # Due or Partial
-#             account=trigger.account
-#         )
-
-#         for invoice in invoices:
-#             customer = Customers.objects.filter(id=invoice.customerid).first()
-#             if customer and customer.email:
-#                 subject = trigger.email_subject
-#                 body = trigger.email_body.format(
-#                     name=customer.name,
-#                     invoice_id=invoice.customid,
-#                     amount_due=invoice.total_amount - invoice.paid_amount,
-#                     status='Due' if invoice.status == 0 else 'Partial'
-#                 )
-
-#                 # Send the email asynchronously
-#                 send_email_task.delay(customer.email, subject, body)
-
-#                 sent_emails_info.append({
-#                     "customer_email": customer.email,
-#                     "customer_name": customer.name,
-#                     "invoice_id": invoice.customid,
-#                     "amount_due": invoice.total_amount - invoice.paid_amount,
-#                 })
-
-#     return sent_emails_info
 
 
 # new logic for getting account id
@@ -692,126 +595,33 @@ def send_reminders_emails_task():
 
 
 
+from django.apps import apps
+from celery import shared_task
+from django.core.mail import send_mail
 
-# @shared_task
-# def send_email_task(to_email, subject, body):
-#     send_mail(
-#         subject,
-#         body,
-#         'info@cunsole.com',  # Change this to your sender email
-#         [to_email],
-#         fail_silently=False,
-#     )
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
-
-
-# import logging
-# logger = logging.getLogger(__name__)
-
-
-# @shared_task
-# def send_email_task(to_email, subject, body, domain=None):
-#     try:
-#         sender_email = 'info@cunsole.com'  # Default sender email
-
-#         if domain:
-#             domain_config = Domainconfig.objects.filter(name=domain).first()
-#             if domain_config and domain_config.verification_status:
-#                 default_mailing_address = Domainconfig.objects.filter(
-#                     account=domain_config.account,
-#                     is_default=True,
-#                     verification_status=True
-#                 ).first()
-
-#                 if default_mailing_address and default_mailing_address.mailing_address:
-#                     sender_email = default_mailing_address.mailing_address
-
-#         send_mail(
-#             subject,
-#             body,
-#             sender_email,
-#             [to_email],
-#             fail_silently=False,
-#         )
-#         logger.info(f"Email sent successfully to {to_email} from {sender_email}")
-#     except Exception as e:
-#         logger.error(f"Failed to send email to {to_email}: {str(e)}")
-#         raise
-
-# from django.apps import apps
-
-# from django.contrib.auth import get_user_model
-# User = get_user_model()
-
+# correct previous logic
 # @shared_task
 # def send_email_task(account_id, to_email, subject, body):
-#     """
-#     Asynchronous task to send an email using the appropriate domain configuration.
-#     """
 #     try:
 #         # Default sender email
 #         sender_email = 'info@cunsole.com'
+#         print("Starting email sending process...")
 
-    
-#         # Domainconfig = User.get_model('users', 'Domainconfig')
-#         Domainconfig = apps.get_model( 'users', 'Domainconfig')
-
+#         # Get the necessary models from the Users app
+#         User = apps.get_model('users', 'User')
+#         Domainconfig = apps.get_model('users', 'Domainconfig')
 
 #         # Fetch the account's default verified domain configuration
+#         user = User.objects.filter(account_id=account_id).first()
 #         domain_config = Domainconfig.objects.filter(
-#             account_id=account_id, 
+#             account=user.account, 
 #             is_default=True, 
 #             verification_status=True
 #         ).first()
 
-#         if domain_config and domain_config.mailing_address:
-#             sender_email = domain_config.mailing_address
-
-#         # Send the email
-#         send_mail(
-#             subject=subject,
-#             message=body,
-#             from_email=sender_email,
-#             recipient_list=[to_email],
-#             fail_silently=False,
-#         )
-
-#         logger.info(f"Email sent successfully to {to_email} from {sender_email}")
-
-#     except Exception as e:
-#         logger.error(f"Failed to send email to {to_email}: {str(e)}")
-#         raise
-
-
-
-# from django.apps import apps
-# from celery import shared_task
-# from django.core.mail import send_mail
-
-# from django.contrib.auth import get_user_model
-# User = get_user_model()
-
-# @shared_task
-# def send_email_task(account_id, to_email, subject, body):
-#     """
-#     Asynchronous task to send an email using the appropriate domain configuration.
-#     """
-#     try:
-#         # Default sender email
-#         sender_email = 'info@cunsole.com'
-#         print("Starting email sending process...")  # Debugging line
-
-#         # Reference the Domainconfig model in the Users app
-#         Domainconfig = apps.get_model('Users', 'Domainconfig')  # Use 'Users' as the app name
-
-#         # Fetch the account's default verified domain configuration
-#         domain_config = Domainconfig.objects.filter(
-#             account_id=account_id, 
-#             is_default=True, 
-#             verification_status=True
-#         ).first()
-
-#         # Debugging: Check if domain_config exists and print details
 #         if domain_config:
 #             print(f"Domain config found: {domain_config}")
 #             if domain_config.mailing_address:
@@ -822,10 +632,8 @@ def send_reminders_emails_task():
 #         else:
 #             print("No active domain config found for this account.")
 
-#         # Debugging: Print the subject and body before sending
 #         print(f"Preparing to send email:\nSubject: {subject}\nBody: {body}")
 
-#         # Send the email
 #         send_mail(
 #             subject=subject,
 #             message=body,
@@ -840,12 +648,17 @@ def send_reminders_emails_task():
 #         print(f"Failed to send email to {to_email}: {str(e)}")
 #         raise
 
+
 from django.apps import apps
 from celery import shared_task
 from django.core.mail import send_mail
+import logging
 
 from django.contrib.auth import get_user_model
 User = get_user_model()
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 @shared_task
 def send_email_task(account_id, to_email, subject, body):
@@ -889,7 +702,9 @@ def send_email_task(account_id, to_email, subject, body):
         print(f"Email sent successfully to {to_email} from {sender_email}")
 
     except Exception as e:
-        print(f"Failed to send email to {to_email}: {str(e)}")
+        # Log the error and re-raise the exception
+        print(f"Failed to send email: {str(e)}")
+        logger.error(f"Email sending failed: {str(e)}")
         raise
 
 

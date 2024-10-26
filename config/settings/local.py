@@ -73,6 +73,12 @@ AZURE_API_VERSION = "2024-08-01-preview"
 # settings.py
 
 CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Use Redis as a broker
+CELERY_RESULT_BACKEND= 'redis://localhost:6379/0'
+# CELERY_BROKER_URL = 'redis://:VH9aY6ZZy6Qb6ulVZNjPffT9z7ralsTkkAzCaJrAIhI=@redis-cunsole.redis.cache.windows.net:6379/0' 
+# CELERY_RESULT_BACKEND= 'redis://:VH9aY6ZZy6Qb6ulVZNjPffT9z7ralsTkkAzCaJrAIhI=@redis-cunsole.redis.cache.windows.net:6379/0' 
+
+
+ # Use Redis as a broker
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 
@@ -138,6 +144,7 @@ EMAIL_BACKEND = env(
 # ------------------------------------------------------------------------------
 # http://whitenoise.evans.io/en/latest/django.html#using-whitenoise-in-development
 INSTALLED_APPS = ["whitenoise.runserver_nostatic", *INSTALLED_APPS]
+
 
 
 # django-debug-toolbar
