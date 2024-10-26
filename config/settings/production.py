@@ -250,7 +250,12 @@ from .base import env
 
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#secret-key
-SECRET_KEY = env("DJANGO_SECRET_KEY")
+# SECRET_KEY = env("DJANGO_SECRET_KEY")
+
+SECRET_KEY = env(
+    "DJANGO_SECRET_KEY",
+    default="gQLbDaJCgvE4tfkyjz02Ut9GEyfLjrP9bDbiAr5mko4n9vJ208omVJ8TnDc5cgyi",
+)
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["app.cunsole.com"])
