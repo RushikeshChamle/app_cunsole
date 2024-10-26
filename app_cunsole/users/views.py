@@ -237,6 +237,32 @@ def signin(request):
 
 
 
+# class CustomTokenObtainPairView(TokenObtainPairView):
+#     serializer_class = CustomTokenObtainPairSerializer
+
+#     def post(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
+#         try:
+#             serializer.is_valid(raise_exception=True)
+#         except serializers.ValidationError as e:
+#             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+#         response = Response(serializer.validated_data, status=status.HTTP_200_OK)
+#         response.set_cookie(
+#             key=settings.SIMPLE_JWT["AUTH_COOKIE"],
+#             value=serializer.validated_data["access"],
+#             expires=settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"],
+#             secure=settings.SIMPLE_JWT.get("AUTH_COOKIE_SECURE", False),
+#         )
+#         response.set_cookie(
+#             key=settings.SIMPLE_JWT["REFRESH_COOKIE"],
+#             value=serializer.validated_data["refresh"],
+#             expires=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
+#             secure=settings.SIMPLE_JWT.get("AUTH_COOKIE_SECURE", False),
+#         )
+#         return response
+    
+
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
@@ -245,9 +271,9 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         try:
             serializer.is_valid(raise_exception=True)
         except serializers.ValidationError as e:
-            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+            return Response(e.detail)
 
-        response = Response(serializer.validated_data, status=status.HTTP_200_OK)
+        response = Response(serializer.validated_data)
         response.set_cookie(
             key=settings.SIMPLE_JWT["AUTH_COOKIE"],
             value=serializer.validated_data["access"],
@@ -261,7 +287,8 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             secure=settings.SIMPLE_JWT.get("AUTH_COOKIE_SECURE", False),
         )
         return response
-    
+
+
 
 
 @api_view(["GET"])
@@ -1093,6 +1120,7 @@ def generate_email_view(request):
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
 from .tasks import send_test_emails
+
 
 @api_view(['POST'])
 def trigger_email_test(request):
