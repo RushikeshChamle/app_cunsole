@@ -236,7 +236,7 @@ def signin(request):
     )
 
 
-
+# previous with the pages routing which cause errors
 # class CustomTokenObtainPairView(TokenObtainPairView):
 #     serializer_class = CustomTokenObtainPairSerializer
 
@@ -303,6 +303,7 @@ def get_accounts_and_users(request):
         Response: A JSON response containing the accounts and users data and a status code.
                   If authentication is not provided, returns a 401 Unauthorized error.
     """
+
     try:
         if request.user_is_authenticated:
             user = request.user_id
@@ -335,7 +336,6 @@ def get_accounts_and_users(request):
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 
 
@@ -1179,3 +1179,100 @@ def check_email_status(request, task_id):
     except Exception as e:
         logger.error(f"Error checking email status for task {task_id}: {str(e)}")
         return JsonResponse({'error': 'An unexpected error occurred', 'details': str(e)}, status=500)
+    
+
+
+
+
+# without authentication
+# @api_view(['POST'])
+# def send_custom_email(request):
+#     """
+#     Send a custom email with user-defined content.
+#     """
+#     try:
+#         # Extract email data from request
+#         subject = request.data.get('subject')
+#         message = request.data.get('message')
+#         recipient_list = request.data.get('recipient_list')
+#         cc_list = request.data.get('cc', [])  # Optional CC field
+
+#         # Validate required fields
+#         if not subject or not message or not recipient_list:
+#             raise ValidationError("Subject, message, and recipient_list are required.")
+
+#         # Prepare email data
+#         email_data = {
+#             'subject': subject,
+#             'message': message,
+#             'recipient_list': recipient_list,
+#             'cc_list': cc_list,
+#         }
+
+#         # Trigger Celery task to send the email
+#         task = send_test_emails.delay(email_data)
+
+#         return Response({
+#             'status': 'success',
+#             'task_id': task.id,
+#             'message': 'Your custom email is being sent.'
+#         })
+
+#     except ValidationError as e:
+#         return Response({'status': 'error', 'message': str(e)}, status=400)
+
+
+
+
+
+@api_view(['POST'])
+def send_custom_email(request):
+    """
+    Send a custom email with user-defined content.
+    """
+    try:
+    #     # Ensure the user is authenticated
+        if request.user_is_authenticated:
+            user = request.user_id
+            account = request.user_account  # Assuming 'user_account' is set correctly
+
+            if not account:
+                return Response(
+                    {"error": "User does not have an associated account"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            return Response(
+                {"error": "User is not authenticated"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        # Extract email data from request
+        subject = request.data.get('subject')
+        message = request.data.get('message')
+        recipient_list = request.data.get('recipient_list')
+        cc_list = request.data.get('cc', [])  # Optional CC field
+
+        # Validate required fields
+        if not subject or not message or not recipient_list:
+            raise ValidationError("Subject, message, and recipient_list are required.")
+
+        # Prepare email data
+        email_data = {
+            'subject': subject,
+            'message': message,
+            'recipient_list': recipient_list,
+            'cc_list': cc_list,
+        }
+
+        # Trigger Celery task to send the email
+        task = send_test_emails.delay(email_data)
+
+        return Response({
+            'status': 'success',
+            'task_id': task.id,
+            'message': 'Your custom email is being sent.'
+        })
+
+    except ValidationError as e:
+        return Response({'status': 'error', 'message': str(e)}, status=400)
