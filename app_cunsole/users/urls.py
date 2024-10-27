@@ -69,6 +69,7 @@ urlpatterns = [
 # testing dummy email flow
     path('trigger_email_test/', views.trigger_email_test, name='trigger_email_test'),
     path('check_email_status/<str:task_id>/', views.check_email_status, name='check_email_status'),
+    path('send_custom_email/', views.send_custom_email, name='send_custom_email'),
 
 
 
