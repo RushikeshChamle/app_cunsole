@@ -291,6 +291,12 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 
 
+
+
+
+
+
+
 @api_view(["GET"])
 def get_accounts_and_users(request):
     """
