@@ -466,6 +466,106 @@ class AzureOpenAIService:
             }
         
 
+    # def generate_trigger_email(
+    #     self, tone, style, length, include_greeting, include_salutation, 
+    #     placeholders, max_tokens=500
+    # ):
+    #     try:
+    #         # Build the email prompt using the provided parameters
+    #         email_prompt = (
+    #             f"Generate an email for accounts receivable automation:\n"
+    #             f"Tone: {tone}\n"
+    #             f"Style: {style}\n"
+    #             f"Length: {length}\n"
+    #         )
+    #         if include_greeting:
+    #             email_prompt += "Include a greeting.\n"
+    #         if include_salutation:
+    #             email_prompt += "Include a salutation.\n"
+
+    #         # Add placeholders directly to the prompt in the required format
+    #         email_prompt += (
+    #             "Use the following placeholders exactly as provided:\n"
+    #             f"{', '.join(placeholders)}\n"
+    #             "Ensure these placeholders remain in the email as-is.\n"
+    #         )
+
+    #         # Call Azure OpenAI to generate the email
+    #         response = self.client.chat.completions.create(
+    #             model=settings.AZURE_DEPLOYMENT_NAME,
+    #             messages=[{"role": "user", "content": email_prompt}],
+    #             max_tokens=max_tokens,
+    #             temperature=0.7,
+    #         )
+
+    #         # Extract subject and body from the response
+    #         email_content = response.choices[0].message.content.strip()
+    #         subject, body = email_content.split('\n', 1)
+
+    #         # No replacement needed, placeholders remain as-is
+    #         return {
+    #             'status': 'success',
+    #             'subject': subject.strip(),
+    #             'body': body.strip()
+    #         }
+
+    #     except Exception as e:
+    #         return {'status': 'error', 'message': str(e)}
+
+    def generate_trigger_email(
+        self, tone, style, length, include_greeting, include_salutation, 
+        placeholders, max_tokens=500
+):
+     try:
+        # Build a more refined and specific email prompt
+        email_prompt = (
+            f"Generate a professional email for accounts receivable teams to use as a payment reminder:\n"
+            f"- Tone: {tone}\n"
+            f"- Style: {style}\n"
+            f"- Length: {length}\n"
+            f"- Purpose: Remind customers about outstanding invoices to encourage timely payments.\n"
+            f"- Ensure a polite, professional, and customer-friendly tone.\n"
+        )
+        
+        if include_greeting:
+            email_prompt += "- Begin the email with a friendly but professional greeting.\n"
+        if include_salutation:
+            email_prompt += "- Conclude with a polite closing and salutation.\n"
+
+        # Ensure placeholders are included in the email body and subject
+        email_prompt += (
+            "- Use the following placeholders **exactly as provided** in both the subject and body:\n"
+            f"{', '.join(placeholders)}\n"
+            "- These placeholders must remain unchanged in the final email.\n"
+            "- Include a relevant subject line (e.g., 'Reminder: Invoice {Invoice.Name} Due Soon').\n"
+            "- Provide clear invoice details using placeholders.\n"
+        )
+
+        # Call Azure OpenAI to generate the email content
+        response = self.client.chat.completions.create(
+            model=settings.AZURE_DEPLOYMENT_NAME,
+            messages=[{"role": "user", "content": email_prompt}],
+            max_tokens=max_tokens,
+            temperature=0.7,
+        )
+
+        # Extract subject and body from the response
+        email_content = response.choices[0].message.content.strip()
+        subject, body = email_content.split('\n', 1)
+
+        # Return the generated email with placeholders intact
+        return {
+            'status': 'success',
+            'subject': subject.strip(),
+            'body': body.strip()
+        }
+
+     except Exception as e:
+        return {'status': 'error', 'message': str(e)}
+
+
+
+
 from openai import AzureOpenAI
 from django.conf import settings
 import logging
@@ -534,3 +634,5 @@ class EmailGenerator:
         except Exception as e:
             logger.error(f"Error generating email: {str(e)}", exc_info=True)
             raise
+
+

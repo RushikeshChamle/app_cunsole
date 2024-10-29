@@ -73,6 +73,16 @@ urlpatterns = [
 
 
 
+
+    path('generate_triggr_by_ai/', views.generate_triggr_by_ai, name='generate_triggr_by_ai'),
+
+
+
+
+
+
+
+
 ]
 
     # path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
