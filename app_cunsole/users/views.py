@@ -1282,3 +1282,135 @@ def send_custom_email(request):
 
     except ValidationError as e:
         return Response({'status': 'error', 'message': str(e)}, status=400)
+    
+
+
+
+# @api_view(['POST'])
+# def generate_triggr_by_ai(request):
+#     try:
+#         # Extract input data
+#         data = request.data
+
+#         # Required fields: tone, style, length, include_greeting, include_salutation
+#         required_fields = ['tone', 'style', 'length', 'include_greeting', 'include_salutation']
+#         missing_fields = [field for field in required_fields if field not in data]
+
+#         if missing_fields:
+#             return Response(
+#                 {"error": f"Missing required fields: {', '.join(missing_fields)}"},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+#         # Optional fields: customer_name, invoice_details, due_date
+#         customer_name = data.get('customer_name', 'Valued Customer')
+#         invoice_details = data.get('invoice_details', 'Invoice Details Not Provided')
+#         due_date = data.get('due_date', 'Due Date Not Provided')
+
+#         # Validate optional due date if provided
+#         if 'due_date' in data:
+#             try:
+#                 due_date = datetime.datetime.strptime(data['due_date'], '%Y-%m-%d').date()
+#             except ValueError:
+#                 return Response(
+#                     {"error": "Invalid date format. Please use YYYY-MM-DD"},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#         # Convert include_greeting and include_salutation to boolean
+#         include_greeting = data.get('include_greeting', 'true') == 'true'
+#         include_salutation = data.get('include_salutation', 'true') == 'true'
+
+#         # Instantiate AzureOpenAIService and generate the email
+#         service = AzureOpenAIService()
+#         email_response = service.generate_trigger_email(
+#             customer_name=customer_name,
+#             invoice_details=invoice_details,
+#             due_date=due_date,
+#             tone=data['tone'],
+#             style=data['style'],
+#             length=data['length'],
+#             include_greeting=include_greeting,
+#             include_salutation=include_salutation
+#         )
+
+#         # Return the generated email content
+#         if email_response['status'] == 'success':
+#             return Response({
+#                 "status": "success",
+#                 "subject": email_response['subject'],
+#                 "body": email_response['body']
+#             }, status=status.HTTP_200_OK)
+#         else:
+#             return Response({
+#                 "status": "error",
+#                 "message": email_response['message']
+#             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#     except Exception as e:
+#         return Response({
+#             "status": "error",
+#             "message": "An error occurred while generating the email",
+#             "detail": str(e)
+#         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+
+@api_view(['POST'])
+def generate_triggr_by_ai(request):
+    try:
+        # Extract input data from the request
+        data = request.data
+
+        # Required fields validation
+        required_fields = ['tone', 'style', 'length', 'include_greeting', 'include_salutation']
+        missing_fields = [field for field in required_fields if field not in data]
+
+        if missing_fields:
+            return Response(
+                {"error": f"Missing required fields: {', '.join(missing_fields)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Extract placeholders or set default placeholders in the desired format
+        placeholders = data.get(
+            'placeholders', 
+            ["{Invoice.Name}", "{Customer.name}", "{Invoice.Amount}", "{Invoice.date}"]
+        )
+
+        # Convert include_greeting and include_salutation to boolean
+        include_greeting = data.get('include_greeting', 'true') == 'true'
+        include_salutation = data.get('include_salutation', 'true') == 'true'
+
+        # Instantiate AzureOpenAIService and generate the email
+        service = AzureOpenAIService()
+        email_response = service.generate_trigger_email(
+            tone=data['tone'],
+            style=data['style'],
+            length=data['length'],
+            include_greeting=include_greeting,
+            include_salutation=include_salutation,
+            placeholders=placeholders
+        )
+
+        # Return the generated email content
+        if email_response['status'] == 'success':
+            return Response({
+                "status": "success",
+                "subject": email_response['subject'],
+                "body": email_response['body']
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                "status": "error",
+                "message": email_response['message']
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": "An error occurred while generating the email",
+            "detail": str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
