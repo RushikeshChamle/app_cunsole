@@ -322,8 +322,11 @@ def get_accounts_and_users(request):
                 )
 
             # Fetch accounts and users based on the authenticated user's account
+            # accounts = Account.objects.filter(id=account.id)
+            # users = User.objects.filter(account=account)
+
             accounts = Account.objects.filter(id=account.id)
-            users = User.objects.filter(account=account)
+            users = User.objects.filter(id=user)
 
             # Serialize the data
             account_serializer = AccountSerializer(accounts, many=True)
@@ -1414,3 +1417,236 @@ def generate_triggr_by_ai(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
+@api_view(['GET'])
+def sessiondetails(request):
+    """
+    Retrieve all accounts and users linked to the authenticated user's account.
+
+    This view requires that the user is authenticated. It fetches all accounts and users associated
+    with the authenticated user's account. The data is serialized and returned in the response.
+
+    Returns:
+        Response: A JSON response containing the accounts and users data and a status code.
+                  If authentication is not provided, returns a 401 Unauthorized error.
+    """
+
+    try:
+        if request.user_is_authenticated:
+            user = request.user_id
+            account = request.user_account  # Assuming each user is linked to an account
+
+            if not account:
+                return Response(
+                    {"error": "User does not have an associated account."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Fetch accounts and users based on the authenticated user's account
+            accounts = Account.objects.filter(id=account.id)
+            users = User.objects.filter(id=user)
+
+            # Serialize the data
+            account_serializer = AccountSerializer(accounts, many=True)
+            user_serializer = UserSerializer(users, many=True)
+
+            # Return the response
+            return Response({
+                "accounts": account_serializer.data,
+                "users": user_serializer.data
+            }, status=status.HTTP_200_OK)
+
+        return Response(
+            {"error": "Authentication credentials were not provided."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+     
+     
+
+
+
+
+# from django.contrib.auth.tokens import default_token_generator
+# from django.core.mail import send_mail
+# from django.http import JsonResponse
+# from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+# from django.utils.encoding import force_bytes, force_str
+# from django.views.decorators.http import require_POST
+# from django.contrib.auth import get_user_model
+# from django.template.loader import render_to_string
+# from rest_framework.decorators import api_view
+# import logging
+
+# logger = logging.getLogger(__name__)
+# User = get_user_model()
+
+
+# @api_view(['POST'])
+# @require_POST
+# def request_password_reset(request):
+#     try:
+#         email = request.data.get('email')
+#         user = User.objects.filter(email=email).first()
+
+#         if user is not None:
+#             # Generate a password reset token
+#             token = default_token_generator.make_token(user)
+#             uid = urlsafe_base64_encode(force_bytes(user.pk))
+
+#             # Create reset URL
+#             reset_url = request.build_absolute_uri(f'/reset-password/{uid}/{token}/')
+
+#             subject = "Password Reset Requested"
+#             message = render_to_string('password_reset_email.html', {
+#                 'user': user,  # Pass the user object to the template
+#                 'reset_url': reset_url,
+#             })
+
+#             # Send email
+#             send_mail(subject, message, 'no-reply@cunsole.com', [email])
+
+#         return JsonResponse({'message': 'If an account with that email exists, a password reset link has been sent.'}, status=200)
+    
+#     except Exception as e:
+#         logger.error(f"Error in request_password_reset: {str(e)}")
+#         return JsonResponse({'error': str(e)}, status=500)
+
+
+
+# @api_view(['POST'])
+# def reset_password(request, uidb64, token):
+#     try:
+#         uid = force_str(urlsafe_base64_decode(uidb64))
+#         user = User.objects.get(pk=uid)
+
+#         if user is not None and default_token_generator.check_token(user, token):
+#             new_password = request.data.get('password')
+#             user.set_password(new_password)
+#             user.save()
+#             return JsonResponse({'message': 'Password has been reset successfully.'}, status=200)
+
+#         return JsonResponse({'error': 'Invalid token or user ID.'}, status=400)
+
+#     except Exception as e:
+#         logger.error(f"Error in reset_password: {str(e)}")
+#         return JsonResponse({'error': str(e)}, status=500)
+    
+
+
+
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.http import JsonResponse
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.views.decorators.http import require_POST
+from django.contrib.auth import get_user_model
+from django.template.loader import render_to_string
+from rest_framework.decorators import api_view
+import logging
+
+logger = logging.getLogger(__name__)
+User = get_user_model()
+
+
+# @api_view(['POST'])
+# @require_POST
+# def request_password_reset(request):
+#     try:
+#         email = request.data.get('email')
+#         user = User.objects.filter(email=email).first()
+
+#         if user is None:
+#             return JsonResponse({'message': 'If an account with that email exists, a password reset link has been sent. Please check your email.'}, status=200)
+#         elif not user.is_active:
+#             return JsonResponse({'error': 'The user account is disabled. Please contact support for assistance.'}, status=400)
+#         else:
+#             # Generate a password reset token
+#             token = default_token_generator.make_token(user)
+#             uid = urlsafe_base64_encode(force_bytes(user.pk))
+
+#             # Create reset URL
+#             reset_url = request.build_absolute_uri(f'/reset-password/{uid}/{token}/')
+
+#             subject = "Password Reset Requested"
+#             message = render_to_string('password_reset_email.html', {
+#                 'user': user,  # Pass the user object to the template
+#                 'reset_url': reset_url,
+#             })
+
+#             # Send email
+#             send_mail(subject, message, 'no-reply@cunsole.com', [email])
+
+#             return JsonResponse({'message': 'If an account with that email exists, a password reset link has been sent. Please check your email.'}, status=200)
+    
+#     except Exception as e:
+#         logger.error(f"Error in request_password_reset: {str(e)}")
+#         return JsonResponse({'error': str(e)}, status=500)
+
+
+@api_view(['POST'])
+@require_POST
+def request_password_reset(request):
+    try:
+        email = request.data.get('email')
+        user = User.objects.filter(email=email).first()
+
+        if user is None:
+            return JsonResponse({'message': 'If an account with that email exists, a password reset link has been sent. Please check your email.'}, status=200)
+        elif not user.is_active:
+            return JsonResponse({'error': 'The user account is disabled. Please contact support for assistance.'}, status=400)
+        else:
+            # Generate a password reset token
+            token = default_token_generator.make_token(user)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+
+            # Create reset URL
+            # reset_url = f'/reset-password/{uid}/{token}/'
+            reset_url = request.build_absolute_uri(f'users/reset-password/{uid}/{token}/')
+
+            subject = "Password Reset Requested"
+            message = render_to_string('password_reset_email.html', {
+                'user': user,  # Pass the user object to the template
+                'reset_url': reset_url,
+            })
+
+            # Send email
+            # send_mail(subject, message, 'no-reply@cunsole.com', [email])
+
+            send_mail(
+    subject,
+    message,  # This is plain text message
+    'no-reply@cunsole.com',
+    [email],
+    html_message=message,  # Here you specify the HTML content
+)
+
+            return JsonResponse({'message': 'If an account with that email exists, a password reset link has been sent. Please check your email.'}, status=200)
+    
+    except Exception as e:
+        logger.error(f"Error in request_password_reset: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+
+
+@api_view(['POST'])
+def reset_password(request, uidb64, token):
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+
+        if user is not None and default_token_generator.check_token(user, token):
+            new_password = request.data.get('password')
+            user.set_password(new_password)
+            user.save()
+            return JsonResponse({'message': 'Password has been reset successfully.'}, status=200)
+
+        return JsonResponse({'error': 'Invalid token or user ID.'}, status=400)
+
+    except Exception as e:
+        logger.error(f"Error in reset_password: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)

@@ -77,6 +77,20 @@ urlpatterns = [
     path('generate_triggr_by_ai/', views.generate_triggr_by_ai, name='generate_triggr_by_ai'),
 
 
+    path('sessiondetails/', views.sessiondetails, name='sessiondetails'),
+
+    # path('request-password-reset/', views.request_password_reset, name='request_password_reset'),
+    # path('reset-password/<str:uidb64>/<str:token>/', views.reset_password_confirm, name='reset_password_confirm'),
+
+    path('request-password-reset/', views.request_password_reset, name='request_password_reset'),
+    path('reset-password/<str:uidb64>/<str:token>/', views.reset_password, name='reset_password'),
+
+
+
+
+
+
+
 
 
 
