@@ -59,38 +59,113 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import EmailMessage
 import json
+# from customer.models import ActivityLog
+
+from django.apps import apps
+
+ActivityLog = apps.get_model('customer', 'ActivityLog')
 
 
 
+
+# original api without activity logs - Create Invoice
+# @api_view(["POST"])
+# def create_invoice(request):
+#     """
+#     Create a new invoice record.
+
+#     This view requires that the user is authenticated. It uses the data from the request to create a new
+#     invoice record linked to the authenticated user's account. The data is validated and serialized before
+#     saving the new invoice record.
+
+#     Returns:
+#         Response: A JSON response indicating the result of the creation attempt.
+#                   If authentication is not provided, returns a 401 Unauthorized error.
+#                   If the data is invalid, returns a 400 Bad Request error.
+#     """
+#     try:
+#         if request.user_is_authenticated:
+#             user = request.user_id
+#             account = request.user_account
+
+#             if not account:
+#                 return Response(
+#                     {"error": "User does not have an associated account"},
+#                     status=status.HTTP_400_BAD_REQUEST,
+#                 )
+
+#             # Deserialize the request data
+#             data = request.data.copy()
+#             data['user'] = user
+#             data['account'] = account.id
+
+#             # Check if customer exists
+#             customer_id = data.get('customerid')
+#             if not Customers.objects.filter(id=customer_id).exists():
+#                 return Response(
+#                     {"error": "Customer ID does not exist"},
+#                     status=status.HTTP_400_BAD_REQUEST,
+#                 )
+
+#             # Initialize serializer
+#             serializer = InvoiceSerializer(data=data)
+
+#             # Validate and save
+#             if serializer.is_valid():
+#                 invoice = serializer.save()
+#                 return Response(
+#                     {
+#                         "success": "Invoice created successfully",
+#                         "invoice": serializer.data,
+#                     },
+#                     status=status.HTTP_201_CREATED,
+#                 )
+
+#             # Log validation errors
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#         return Response(
+#             {"error": "Authentication required"},
+#             status=status.HTTP_401_UNAUTHORIZED,
+#         )
+
+#     except Exception as e:
+#         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+from django.forms.models import model_to_dict
+from django.apps import apps
+
+
+User = apps.get_model('users', 'User')
 
 @api_view(["POST"])
 def create_invoice(request):
     """
-    Create a new invoice record.
+    Create a new invoice record with activity logging.
 
     This view requires that the user is authenticated. It uses the data from the request to create a new
     invoice record linked to the authenticated user's account. The data is validated and serialized before
-    saving the new invoice record.
-
-    Returns:
-        Response: A JSON response indicating the result of the creation attempt.
-                  If authentication is not provided, returns a 401 Unauthorized error.
-                  If the data is invalid, returns a 400 Bad Request error.
+    saving the new invoice record, and logs the activity.
     """
     try:
         if request.user_is_authenticated:
             user = request.user_id
             account = request.user_account
 
+            # Check if the user has an associated account
             if not account:
                 return Response(
                     {"error": "User does not have an associated account"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+            # Fetch the User instance if 'user' is an integer ID
+            if isinstance(user, int):
+                user = User.objects.get(id=user)
+
+
             # Deserialize the request data
             data = request.data.copy()
-            data['user'] = user
+            data['user'] = user.id
             data['account'] = account.id
 
             # Check if customer exists
@@ -101,12 +176,27 @@ def create_invoice(request):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Initialize serializer
+            # Initialize the serializer
             serializer = InvoiceSerializer(data=data)
 
             # Validate and save
             if serializer.is_valid():
-                invoice = serializer.save()
+                new_invoice = serializer.save()
+
+                # Prepare a detailed description of all invoice fields
+                invoice_fields = model_to_dict(new_invoice)
+                description = "Invoice created with details:\n" + \
+                              "\n".join([f"{key}: {value}" for key, value in invoice_fields.items()])
+
+                # Log the activity
+                ActivityLog.objects.create(
+                    account=account,
+                    user=user,
+                    activity_type=0,  # Invoice Created
+                    description=description,
+                    invoice=new_invoice
+                )
+
                 return Response(
                     {
                         "success": "Invoice created successfully",
@@ -125,6 +215,70 @@ def create_invoice(request):
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+@api_view(["PUT"])
+def update_invoice(request, invoice_id):
+    """
+    API to update an existing invoice.
+    """
+    try:
+        if request.user_is_authenticated:
+            user = request.user_id
+            account = request.user_account
+
+            if not account:
+                return Response(
+                    {"error": "User does not have an associated account"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if isinstance(user, int):
+                user = User.objects.get(id=user)
+
+            try:
+                invoice = Invoices.objects.get(id=invoice_id, account=account)
+            except Invoices.DoesNotExist:
+                return Response(
+                    {"error": "Invoice not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            data = request.data.copy()
+            data['account'] = account.id
+            data['user'] = user.id
+
+            serializer = InvoiceSerializer(invoice, data=data, partial=True)
+
+            if serializer.is_valid():
+                updated_invoice = serializer.save()
+
+                # Log activity
+                invoice_fields = model_to_dict(updated_invoice)
+                description = "Invoice updated with details:\n" + \
+                              "\n".join([f"{key}: {value}" for key, value in invoice_fields.items()])
+
+                ActivityLog.objects.create(
+                    account=account,
+                    user=user,
+                    activity_type=1,  # Invoice Updated
+                    description=description,
+                    invoice=updated_invoice
+                )
+
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {"error": "Authentication required"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 
@@ -254,9 +408,164 @@ def get_invoices_by_account(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# previous original api  
+# @api_view(["GET"])
+# def get_customer_invoice_summary(request):
+#     try:
+#         # Ensure the user is authenticated
+#         if request.user_is_authenticated:
+#             account = request.user_account
+
+#             if not account:
+#                 return Response(
+#                     {"error": "User does not have an associated account"},
+#                     status=status.HTTP_400_BAD_REQUEST,
+#                 )
+
+#             # Fetch all customers based on the account
+#             customers_list = Customers.objects.filter(account_id=account.id)
+
+#             if not customers_list:
+#                 return Response(
+#                     {"error": "No customers found for the account"},
+#                     status=status.HTTP_404_NOT_FOUND,
+#                 )
+
+#             customer_data = []
+#             for customer in customers_list:
+#                 customer_invoices = Invoices.objects.filter(customerid=customer.id)
+#                 customer_serializer = CustomerinvsummarySerializer(customer)
+#                 customer_data.append(
+#                     {
+#                         "customer": customer_serializer.data,
+#                         "invoices": InvoicedataSerializer(
+#                             customer_invoices,
+#                             many=True,
+#                         ).data,
+#                     },
+#                 )
+
+#             # Return the response
+#             return Response(customer_data, status=status.HTTP_200_OK)
+
+#         return Response(
+#             {"error": "Authentication required"},
+#             status=status.HTTP_401_UNAUTHORIZED,
+#         )
+
+#     except Exception as e:
+#         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from django.db.models import Q
+from datetime import datetime, timedelta
+
 
 @api_view(["GET"])
 def get_customer_invoice_summary(request):
+    try:
+        # Ensure the user is authenticated
+        if request.user_is_authenticated:
+            account = request.user_account
+
+            if not account:
+                return Response(
+                    {"error": "User does not have an associated account"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Fetch query parameters for the date range
+            customer_ids = request.query_params.getlist("customers")
+        start_date = request.query_params.get("start_date")
+        end_date = request.query_params.get("end_date")
+        status_filter = request.query_params.get("status")
+        min_amount = request.query_params.get("min_amount")
+        max_amount = request.query_params.get("max_amount")
+        
+        # Retrieve all customers for the account
+        customers_query = Customers.objects.filter(account_id=account.id)
+        
+        # Apply customer filter if customer IDs are provided
+        if customer_ids:
+            customers_query = customers_query.filter(id__in=customer_ids)
+
+        if not customers_query.exists():
+            return Response(
+                {"error": "No customers found for the account"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        customer_data = []
+        for customer in customers_query:
+            # Base invoice filter
+            customer_invoices = Invoices.objects.filter(
+                customerid=customer.id,
+                account=account,
+            )
+
+            # Date range filtering
+            if start_date and end_date:
+                try:
+                    start = datetime.strptime(start_date, "%Y-%m-%d")
+                    end = datetime.strptime(end_date, "%Y-%m-%d")
+                    customer_invoices = customer_invoices.filter(
+                        created_at__range=[start, end]
+                    )
+                except ValueError:
+                    return Response(
+                        {"error": "Invalid date format. Use YYYY-MM-DD"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+            # Status filtering
+            if status_filter and status_filter in ['0', '1', '2', '3']:
+                customer_invoices = customer_invoices.filter(status=int(status_filter))
+
+            # Amount range filtering
+            if min_amount:
+                try:
+                    customer_invoices = customer_invoices.filter(total_amount__gte=float(min_amount))
+                except ValueError:
+                    return Response(
+                        {"error": "Invalid minimum amount"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+            if max_amount:
+                try:
+                    customer_invoices = customer_invoices.filter(total_amount__lte=float(max_amount))
+                except ValueError:
+                    return Response(
+                        {"error": "Invalid maximum amount"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+            # Only include customers with invoices after filtering
+            if customer_invoices.exists():
+                customer_serializer = CustomerinvsummarySerializer(customer)
+                customer_data.append({
+                    "customer": customer_serializer.data,
+                    "invoices": InvoicedataSerializer(
+                        customer_invoices,
+                        many=True,
+                    ).data,
+                })
+
+        # Return the response
+        return Response(customer_data, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+
+@api_view(["GET"])
+def get_customer_page_summary(request):
     try:
         # Ensure the user is authenticated
         if request.user_is_authenticated:
@@ -302,6 +611,7 @@ def get_customer_invoice_summary(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+        
 
 
 
@@ -409,11 +719,116 @@ def get_customer_summary(request, customer_id):
 
 
 
+# previus logic without ActivityLog
+# @api_view(["POST"])
+# def add_payment(request):
+#     """
+#     Create a new payment record and update the related invoice.
+
+#     Returns:
+#         Response: A JSON response with payment and invoice status.
+#     """
+#     try:
+#         if not request.user_is_authenticated:
+#             return Response(
+#                 {"error": "Authentication required"},
+#                 status=status.HTTP_401_UNAUTHORIZED,
+#             )
+
+#         user = request.user_id  # Authenticated user's ID
+#         account = request.user_account  # User's associated account
+
+#         if not account:
+#             return Response(
+#                 {"error": "User does not have an associated account"},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         # Deserialize request data
+#         data = request.data.copy()
+#         data['user'] = user
+#         data['account'] = account.id
+
+#         # Retrieve and validate the invoice
+#         invoice_id = data.get('invoice')
+#         try:
+#             invoice = Invoices.objects.get(id=invoice_id)
+#         except Invoices.DoesNotExist:
+#             return Response(
+#                 {"error": "Invoice not found"},
+#                 status=status.HTTP_404_NOT_FOUND,
+#             )
+
+#         # Validate the new payment amount before saving
+#         payment_amount = data.get('amount')
+#         if payment_amount is None or float(payment_amount) <= 0:
+#             return Response(
+#                 {"error": "Invalid payment amount."},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         new_paid_amount = invoice.paid_amount + Decimal(payment_amount)
+
+#         # Ensure no overpayment
+#         if new_paid_amount > invoice.total_amount:
+#             return Response(
+#                 {"error": "Payment exceeds the invoice total amount."},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         # Initialize the serializer after validation
+#         serializer = PaymentSerializer(data=data)
+#         if not serializer.is_valid():
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#         # Save the payment only after validation
+#         payment = serializer.save()
+
+#         # Update the invoice with the new paid amount and status
+#         invoice.paid_amount = new_paid_amount
+
+#         # Determine the new status of the invoice
+#         if invoice.paid_amount == 0:
+#             invoice.status = 0  # Due
+#         elif invoice.paid_amount < invoice.total_amount:
+#             invoice.status = 1  # Partial
+#         else:
+#             invoice.status = 2  # Completed
+
+#         invoice.save()  # Save the updated invoice
+
+#         return Response(
+#             {
+#                 "success": "Payment created successfully and invoice updated.",
+#                 "payment": serializer.data,
+#                 "invoice_status": invoice.get_status_display(),
+#             },
+#             status=status.HTTP_201_CREATED,
+#         )
+
+#     except Exception as e:
+#         return Response(
+#             {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+#         )
+
+
+from decimal import Decimal
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from rest_framework import status
+from django.apps import apps
+from django.forms.models import model_to_dict
+
+# Dynamically fetch the models
+Invoices = apps.get_model('invoices', 'Invoices')
+# PaymentSerializer = apps.get_model('payments', 'PaymentSerializer')
+# ActivityLog = apps.get_model('activitylogs', 'ActivityLog')
+User = apps.get_model('users', 'User')  # Fetch the User model
 
 @api_view(["POST"])
 def add_payment(request):
     """
-    Create a new payment record and update the related invoice.
+    Create a new payment record and update the related invoice with activity logging.
 
     Returns:
         Response: A JSON response with payment and invoice status.
@@ -428,15 +843,20 @@ def add_payment(request):
         user = request.user_id  # Authenticated user's ID
         account = request.user_account  # User's associated account
 
+        # Check if the user has an associated account
         if not account:
             return Response(
                 {"error": "User does not have an associated account"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Fetch the User instance if 'user' is an integer ID
+        if isinstance(user, int):
+            user = User.objects.get(id=user)
+
         # Deserialize request data
         data = request.data.copy()
-        data['user'] = user
+        data['user'] = user.id  # Assign the user ID
         data['account'] = account.id
 
         # Retrieve and validate the invoice
@@ -487,6 +907,29 @@ def add_payment(request):
 
         invoice.save()  # Save the updated invoice
 
+        # Prepare activity log description in JSON format
+        activity_log_data = {
+            "payment_id": payment.id,
+            "payment_amount": float(payment_amount),
+            "invoice_id": invoice.id,
+            "new_paid_amount": float(new_paid_amount),
+            "invoice_status": invoice.get_status_display(),
+            "account_id": account.id,
+            "user_id": user.id,  # Use the fetched User instance here
+        }
+
+        # Prepare a detailed description for activity logging
+        description = f"Payment created for invoice {invoice.id} with amount {payment_amount}. New paid amount: {new_paid_amount}. Invoice status: {invoice.get_status_display()}."
+
+        # Log the activity in the ActivityLog table
+        ActivityLog.objects.create(
+            account=account,
+            user=user,  # Use the fetched User instance directly
+            activity_type=3,  # Payment Created (or whatever activity type represents payment creation)
+            description=description,
+            invoice=invoice,
+        )
+
         return Response(
             {
                 "success": "Payment created successfully and invoice updated.",
@@ -500,6 +943,8 @@ def add_payment(request):
         return Response(
             {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
 
 
 

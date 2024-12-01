@@ -71,9 +71,6 @@ urlpatterns = [
     path('check_email_status/<str:task_id>/', views.check_email_status, name='check_email_status'),
     path('send_custom_email/', views.send_custom_email, name='send_custom_email'),
 
-
-
-
     path('generate_triggr_by_ai/', views.generate_triggr_by_ai, name='generate_triggr_by_ai'),
 
 
@@ -84,6 +81,8 @@ urlpatterns = [
 
     path('request-password-reset/', views.request_password_reset, name='request_password_reset'),
     path('reset-password/<str:uidb64>/<str:token>/', views.reset_password, name='reset_password'),
+
+
 
 
 
