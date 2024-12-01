@@ -2,9 +2,9 @@ from django.urls import path
 
 from app_cunsole.invoices.views import bulk_create_invoices
 from app_cunsole.invoices.views import create_invoice
-from app_cunsole.invoices.views import get_invoices_by_account,credit_sales_card_data,invoice_payment_card,get_top_due_customers,dso_data_card,ar_status_card, invoice_summary_cards, check_email_trigger, get_customer_summary,invoice_details, add_payment, get_customer_payments
+from app_cunsole.invoices.views import get_invoices_by_account,get_customer_page_summary,credit_sales_card_data,invoice_payment_card,get_top_due_customers,dso_data_card,ar_status_card, invoice_summary_cards, check_email_trigger, get_customer_summary,invoice_details, add_payment, get_customer_payments
 # from app_cunsole.users.views import CustomTokenObtainPairView
-from .views import send_email_view
+from .views import send_email_view, update_invoice
 # from app_cunsole.users.views import TokenRefreshView
 from app_cunsole.users.views import signup
 
@@ -40,6 +40,9 @@ urlpatterns = [
     path('get_top_due_customers/', get_top_due_customers, name='get_top_due_customers'),
     path('invoice_payment_card/', invoice_payment_card, name='invoice_payment_card'),
     path('credit_sales_card_data/', credit_sales_card_data, name='credit_sales_card_data'),
+    path('invoices/update/<int:invoice_id>/', update_invoice, name='update-invoice'),
+    path('customersdetails/', get_customer_page_summary , name='customersdetails'),
+
 
 
 ]

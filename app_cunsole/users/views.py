@@ -1233,7 +1233,7 @@ def check_email_status(request, task_id):
 
 
 
-
+# previous logic without activity logs for sending manual email
 @api_view(['POST'])
 def send_custom_email(request):
     """
@@ -1285,8 +1285,202 @@ def send_custom_email(request):
 
     except ValidationError as e:
         return Response({'status': 'error', 'message': str(e)}, status=400)
-    
 
+
+
+# from django.forms.models import model_to_dict
+# from rest_framework.decorators import api_view
+# from rest_framework.response import Response
+# from rest_framework import status
+# from rest_framework.exceptions import ValidationError
+# from .tasks import send_test_emails
+# import logging
+# from django.apps import apps
+# from typing import Dict, Any, List
+# from celery.result import AsyncResult
+
+# # Get models dynamically
+# ActivityLog = apps.get_model('customer', 'ActivityLog')
+# User = apps.get_model('users', 'User')
+
+# # Configure logging
+# logger = logging.getLogger(__name__)
+
+# def validate_email_data(data: Dict[str, Any]) -> None:
+#     """Validate email data and raise ValidationError if invalid."""
+#     required_fields = {
+#         'subject': 'Email subject is required',
+#         'message': 'Email message is required',
+#         'recipient_list': 'At least one recipient is required'
+#     }
+    
+#     for field, error_message in required_fields.items():
+#         if not data.get(field):
+#             raise ValidationError({field: error_message})
+    
+#     if not isinstance(data.get('recipient_list', []), list):
+#         raise ValidationError({'recipient_list': 'Recipient list must be an array'})
+    
+#     if 'cc_list' in data and not isinstance(data['cc_list'], list):
+#         raise ValidationError({'cc_list': 'CC list must be an array'})
+
+# def create_activity_log(
+#     account: Any,
+#     user: Any,
+#     email_data: Dict[str, Any],
+#     status_message: str
+# ) -> ActivityLog:
+#     """Create an activity log entry for the email operation."""
+#     email_fields = {
+#         'subject': email_data['subject'],
+#         'message': email_data['message'],
+#         'recipient_list': email_data['recipient_list'],
+#         'cc_list': email_data.get('cc_list', [])
+#     }
+    
+#     description = "Email Details:\n" + \
+#                   "\n".join([f"{key}: {value}" for key, value in email_fields.items()])
+    
+#     return ActivityLog.objects.create(
+#         account=account,
+#         user=user,
+#         activity_type=4,  # Email Activity Type
+#         description=description,
+#         email_subject=email_data['subject'],
+#         email_description=email_data['message'],
+#         email_from=user.email,
+#         email_to=email_data['recipient_list'],
+#         email_cc=email_data.get('cc_list', []),
+#         email_bcc=None,
+#         email_status=status_message
+#     )
+
+# @api_view(['POST'])
+# def send_custom_email(request) -> Response:
+#     """
+#     Send a custom email with user-defined content and log the activity.
+    
+#     Returns:
+#         Response object with appropriate status code and message
+#     """
+#     try:
+#         # Authentication check
+#         if not request.user.is_authenticated:
+#             logger.warning("Unauthenticated email send attempt")
+#             return Response(
+#                 {
+#                     "status": "error",
+#                     "code": "authentication_required",
+#                     "message": "User is not authenticated"
+#                 },
+#                 status=status.HTTP_401_UNAUTHORIZED
+#             )
+
+#         user = request.user
+#         account = getattr(user, 'account', None)
+        
+#         if not account:
+#             logger.error(f"User {user.id} has no associated account")
+#             return Response(
+#                 {
+#                     "status": "error",
+#                     "code": "account_required",
+#                     "message": "User does not have an associated account"
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+#         # Extract and validate email data
+#         email_data = {
+#             'subject': request.data.get('subject'),
+#             'message': request.data.get('message'),
+#             'recipient_list': request.data.get('recipient_list', []),
+#             'cc_list': request.data.get('cc', [])
+#         }
+        
+#         validate_email_data(email_data)
+
+#         # Create initial activity log
+#         activity_log = create_activity_log(
+#             account=account,
+#             user=user,
+#             email_data=email_data,
+#             status_message="Preparing to send"
+#         )
+
+#         # Trigger Celery task
+#         task = send_test_emails.delay(email_data)
+        
+#         # Update activity log with task ID
+#         activity_log.task_id = task.id
+#         activity_log.save()
+        
+#         logger.info(f"Email task {task.id} triggered for user {user.id}")
+
+#         return Response({
+#             'status': 'success',
+#             'task_id': task.id,
+#             'message': 'Email is being processed',
+#             'activity_log_id': activity_log.id
+#         }, status=status.HTTP_202_ACCEPTED)
+
+#     except ValidationError as e:
+#         error_detail = str(e.detail) if hasattr(e, 'detail') else str(e)
+#         logger.warning(f"Email validation error: {error_detail}")
+#         return Response({
+#             'status': 'error',
+#             'code': 'validation_error',
+#             'message': 'Invalid email data provided',
+#             'details': error_detail
+#         }, status=status.HTTP_400_BAD_REQUEST)
+        
+#     except Exception as e:
+#         logger.error(f"Unexpected error in send_custom_email: {str(e)}", exc_info=True)
+#         return Response({
+#             'status': 'error',
+#             'code': 'internal_error',
+#             'message': 'An unexpected error occurred while processing your request',
+#             'request_id': request.META.get('X-Request-ID', 'unknown')
+#         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# @api_view(['GET'])
+# def check_email_status(request, task_id: str) -> Response:
+#     """
+#     Check the status of an email sending task.
+#     """
+#     try:
+#         task_result = AsyncResult(task_id)
+        
+#         if task_result.ready():
+#             if task_result.successful():
+#                 return Response({
+#                     'status': 'success',
+#                     'code': 'email_sent',
+#                     'message': 'Email was sent successfully'
+#                 })
+#             else:
+#                 error = str(task_result.result)
+#                 logger.error(f"Email task {task_id} failed: {error}")
+#                 return Response({
+#                     'status': 'error',
+#                     'code': 'email_failed',
+#                     'message': 'Email sending failed',
+#                     'error': error
+#                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+#         return Response({
+#             'status': 'pending',
+#             'code': 'processing',
+#             'message': 'Email is still being processed'
+#         })
+        
+#     except Exception as e:
+#         logger.error(f"Error checking email status: {str(e)}", exc_info=True)
+#         return Response({
+#             'status': 'error',
+#             'code': 'status_check_failed',
+#             'message': 'Failed to check email status'
+#         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # @api_view(['POST'])

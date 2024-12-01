@@ -180,24 +180,6 @@ class GlobalEmailSettings(models.Model):
     
 
 
-# class Domainconfig(models.Model):
-#     id = models.AutoField(primary_key=True)
-#     name = models.CharField(max_length=255, unique=True)  # Domain name
-#     user = models.ForeignKey(User, on_delete=models.CASCADE)
-#     account = models.ForeignKey(Account, on_delete=models.CASCADE)  # Links to the associated Account
-#     mail_from_domain = models.CharField(max_length=255)  # Custom MAIL FROM domain
-#     spf_record = models.TextField()  # SPF record for the domain
-#     dmarc_record = models.TextField()  # DMARC record for the domain
-#     verification_status = models.BooleanField(default=False)  # Verification status
-#     created_at = models.DateTimeField(auto_now_add=True)  # When the domain was added
-#     updated_at = models.DateTimeField(auto_now=True)  # When the domain was last updated
-#     is_disabled = models.BooleanField(default=False)  # 0 for enabled, 1 for disabled
-
-#     class Meta:
-#         db_table = "Domainconfig"
-
-#     def __str__(self):
-#         return self.name
 
 
 

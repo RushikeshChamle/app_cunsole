@@ -21,7 +21,7 @@ from django.shortcuts import render, get_object_or_404
 from django.core.mail import send_mail
 from django.utils import timezone
 from django.http import JsonResponse
-
+from .models import ActivityLog
 
 from .models import Account
 
@@ -192,7 +192,7 @@ def get_customer(request, customer_id):
 
 # bulk create customers api previsus
 
-
+# original api
 @csrf_exempt
 def bulk_create_customers(request):
     if request.method != "POST":
@@ -290,36 +290,130 @@ def bulk_create_customers(request):
         )
 
 
+
+
+# without activity logs - Create Email Trigger
+# @api_view(["POST"])
+# def create_email_trigger(request):
+#     try:
+#         if request.user_is_authenticated:
+#             user = request.user_id
+#             account = request.user_account
+
+#             if not account:
+#                 return Response(
+#                     {"error": "User does not have an associated account"},
+#                     status=status.HTTP_400_BAD_REQUEST,
+#                 )
+            
+
+#             # Fetch the User instance if 'user' is an integer ID
+#             if isinstance(user, int):
+#                 user = User.objects.get(id=user)
+
+#             # Prepare data for serializer
+#             data = request.data.copy()
+#             data['user'] = user
+#             data['account'] = account.id
+
+#             print("User ID API:", user)
+#             print("Account ID API:", account.id)
+#             print("Updated Data API:", data)
+
+#             # Initialize serializer
+#             serializer = EmailTriggerSerializer(data=data)
+
+#             print("Serialise API :", serializer)
+
+#             # Validate and save
+#             if serializer.is_valid():
+#                 serializer.save()
+#                 return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+
+            
+
+
+
+
+#             # Log validation errors
+#             print("Serializer Errors:", serializer.errors)
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#         return Response(
+#             {"error": "Authentication required"},
+#             status=status.HTTP_401_UNAUTHORIZED,
+#         )
+    
+#     except Exception as e:
+#         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+from django.forms.models import model_to_dict
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
 @api_view(["POST"])
 def create_email_trigger(request):
     try:
+        # Check if the user is authenticated
         if request.user_is_authenticated:
-            user = request.user_id
-            account = request.user_account
+            user = request.user_id  # This might be an integer
+            account = request.user_account  # This might be an object
 
+            # Ensure the account exists
             if not account:
                 return Response(
                     {"error": "User does not have an associated account"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Prepare data for serializer
-            data = request.data.copy()
-            data['user'] = user
-            data['account'] = account.id
+            # Fetch the User instance if 'user' is an integer ID
+            if isinstance(user, int):
+                try:
+                    user = User.objects.get(id=user)
+                except User.DoesNotExist:
+                    return Response(
+                        {"error": "User not found"},
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
 
-            print("User ID API:", user)
-            print("Account ID API:", account.id)
+            # Prepare data for the serializer
+            data = request.data.copy()
+            data['user'] = user.id  # Set the user ID
+            data['account'] = account.id if hasattr(account, 'id') else account
+
+            print("User ID API:", user.id)
+            print("Account ID API:", account.id if hasattr(account, 'id') else account)
             print("Updated Data API:", data)
 
             # Initialize serializer
             serializer = EmailTriggerSerializer(data=data)
 
-            print("Serialise API :", serializer)
+            print("Serializer API:", serializer)
 
             # Validate and save
             if serializer.is_valid():
-                serializer.save()
+                new_trigger = serializer.save()
+
+                # Use model_to_dict to capture all fields of the created email trigger
+                trigger_fields = model_to_dict(new_trigger)
+                trigger_fields['Created At'] = new_trigger.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                trigger_fields['Updated At'] = new_trigger.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+
+                # Format the description for the activity log
+                description = "New email trigger created with the following details:\n" + \
+                              "\n".join([f"{key}: {value}" for key, value in trigger_fields.items()])
+
+                # Log the creation in ActivityLog
+                ActivityLog.objects.create(
+                    account=account,
+                    user=user,
+                    activity_type=5,  # Email Trigger Created
+                    description=description,
+                    email_trigger=new_trigger
+                )
+
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
 
             # Log validation errors
@@ -330,19 +424,110 @@ def create_email_trigger(request):
             {"error": "Authentication required"},
             status=status.HTTP_401_UNAUTHORIZED,
         )
-    
+
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
 
+
+
+
+
+# original without activity logs
+# @api_view(["PUT"])
+# def update_email_trigger(request, trigger_id):
+#     try:
+#         if request.user_is_authenticated:
+#             user = request.user_id  # Check if this is an int or an object
+#             account = request.user_account  # Check if this is an int or an object
+
+#             # Ensure the account exists
+#             if not account:
+#                 return Response(
+#                     {"error": "User does not have an associated account"},
+#                     status=status.HTTP_400_BAD_REQUEST,
+#                 )
+
+#             # Get the existing email trigger
+#             try:
+#                 email_trigger = EmailTrigger.objects.get(id=trigger_id, account=account)
+#             except EmailTrigger.DoesNotExist:
+#                 return Response(
+#                     {"error": "Email trigger not found"},
+#                     status=status.HTTP_404_NOT_FOUND,
+#                 )
+
+#             # Prepare data for serializer
+#             data = request.data.copy()
+
+#             # Assign user and account correctly based on their type (int or object)
+#             if isinstance(user, int):
+#                 data['user'] = user  # If user is already an ID
+#             else:
+#                 data['user'] = user.id  # If user is an object
+
+#             if isinstance(account, int):
+#                 data['account'] = account  # If account is already an ID
+#             else:
+#                 data['account'] = account.id  # If account is an object
+
+#             print("User ID API:", data['user'])
+#             print("Account ID API:", data['account'])
+#             print("Updated Data API:", data)
+
+#             # Initialize serializer with existing instance and new data
+#             serializer = EmailTriggerSerializer(email_trigger, data=data, partial=True)
+
+#             print("Serializer API:", serializer)
+
+#             # Validate and save
+#             # if serializer.is_valid():
+#             #     serializer.save()
+
+#             if serializer.is_valid():
+#                 updated_trigger = serializer.save()
+
+
+#             ActivityLog.objects.create(
+#                     account=account,
+#                     user=user,
+#                     activity_type=6,  # Email Trigger Updated
+#                     description=f"Email trigger with ID {trigger_id} updated by User ID {user}.",
+#                     email_trigger=updated_trigger
+#                 )  
+
+
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+
+#             # Log validation errors
+#             print("Serializer Errors:", serializer.errors)
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#         return Response(
+#             {"error": "Authentication required"},
+#             status=status.HTTP_401_UNAUTHORIZED,
+#         )
+    
+#     except Exception as e:
+#         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
 @api_view(["PUT"])
 def update_email_trigger(request, trigger_id):
     try:
         if request.user_is_authenticated:
-            user = request.user_id  # Check if this is an int or an object
-            account = request.user_account  # Check if this is an int or an object
+            user = request.user_id  # This might be an integer ID
+            account = request.user_account  # This might be an integer ID
+
+            # Fetch the User instance if 'user' is an integer ID
+            if isinstance(user, int):
+                user = User.objects.get(id=user)
 
             # Ensure the account exists
             if not account:
@@ -362,44 +547,35 @@ def update_email_trigger(request, trigger_id):
 
             # Prepare data for serializer
             data = request.data.copy()
-
-            # Assign user and account correctly based on their type (int or object)
-            if isinstance(user, int):
-                data['user'] = user  # If user is already an ID
-            else:
-                data['user'] = user.id  # If user is an object
-
-            if isinstance(account, int):
-                data['account'] = account  # If account is already an ID
-            else:
-                data['account'] = account.id  # If account is an object
-
-            print("User ID API:", data['user'])
-            print("Account ID API:", data['account'])
-            print("Updated Data API:", data)
+            data['user'] = user.id  # Ensure user ID is correctly assigned
+            data['account'] = account if isinstance(account, int) else account.id
 
             # Initialize serializer with existing instance and new data
             serializer = EmailTriggerSerializer(email_trigger, data=data, partial=True)
 
-            print("Serializer API:", serializer)
-
-            # Validate and save
             if serializer.is_valid():
-                serializer.save()
+                updated_trigger = serializer.save()
+
+                # Create the ActivityLog entry with the User instance
+                ActivityLog.objects.create(
+                    account=account,
+                    user=user,  # Pass the User instance directly
+                    activity_type=6,  # Email Trigger Updated
+                    description=f"Email trigger with ID {trigger_id} updated by User ID {user.id}.",
+                    email_trigger=updated_trigger
+                )
+
                 return Response(serializer.data, status=status.HTTP_200_OK)
 
-            # Log validation errors
-            print("Serializer Errors:", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(
             {"error": "Authentication required"},
             status=status.HTTP_401_UNAUTHORIZED,
         )
-    
+
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 
 
@@ -445,6 +621,11 @@ def get_email_triggers(request):
         return Response({"email_triggers": serializer.data}, status=status.HTTP_200_OK)
 
     return Response({"error": "Method not allowed."}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+
+
+
 
 
 
@@ -494,6 +675,44 @@ def get_email_trigger_by_id(request, trigger_id):
             {"error": "Authentication credentials were not provided."},
             status=status.HTTP_401_UNAUTHORIZED,
         )
+    
+
+
+
+@api_view(["GET"])
+def get_customers_by_account(request):
+    try:
+        # Ensure the user is authenticated (Updated)
+
+        if request.user_is_authenticated:
+            user = request.user_id
+            account = request.user_account
+
+            if not account:
+                return Response(
+                    {"error": "User does not have an associated account"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Fetch customers for the user's account using ORM queries
+            account_customers = Customers.objects.filter(account_id=account.id, isactive=True)
+
+            # Serialize the data
+            serializer = CustomerSerializer(account_customers, many=True)
+
+            # Return the response
+            return Response({"customers": serializer.data}, status=status.HTTP_200_OK)
+
+        return Response(
+            {"error": "Authentication required"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
 
 
 @api_view(["GET"])
@@ -1026,6 +1245,10 @@ def get_invoice_with_all_reminders(request, invoice_id):
         return Response({"error": "Invoice not found."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
 
 
 

@@ -1,5 +1,9 @@
 import uuid
 from django.db import models
+
+
+
+import uuid
 from django.db import models
 
 
@@ -23,10 +27,6 @@ class Account(models.Model):
         db_table = "account"
     
 
-
-
-import uuid
-from django.db import models
 
 
 
@@ -323,4 +323,47 @@ class Dispute(models.Model):
 
 
 
+
+
+class ActivityLog(models.Model):
+    ACTIVITY_TYPES = (
+        (0, 'Invoice Created'),
+        (1, 'Invoice Updated'),
+        (2, 'Invoice Status Changed'),
+        (3, 'Payment Created'),
+        (4, 'Payment Updated'),
+        (5, 'Email Trigger Created'),
+        (6, 'Email Trigger Updated'),
+        (7, 'Email Sent'),
+        (8, 'Other'),
+    )
+
+    EMAIL_STATUS_CHOICES = (
+        (0, 'Sent'),
+        (1, 'Failed'),
+        (2, 'Pending'),
+    )
+
+    account = models.ForeignKey('customer.Account', on_delete=models.CASCADE, related_name='activity_logs')
+    user = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True)
+    activity_type = models.IntegerField(choices=ACTIVITY_TYPES)
+    invoice = models.ForeignKey('invoices.Invoices', on_delete=models.CASCADE, null=True, blank=True)
+    payment = models.ForeignKey('invoices.Payment', on_delete=models.CASCADE, null=True, blank=True)
+    email_trigger = models.ForeignKey(EmailTrigger, on_delete=models.CASCADE, null=True, blank=True)
+    email_subject = models.CharField(max_length=255, null=True, blank=True)
+    email_description = models.CharField(max_length=255, null=True, blank=True)
+    email_from = models.EmailField(null=True, blank=True)
+    email_to = models.TextField(null=True, blank=True)
+    email_cc = models.TextField(null=True, blank=True)
+    email_bcc = models.TextField(null=True, blank=True)
+    email_status = models.IntegerField(choices=EMAIL_STATUS_CHOICES, null=True, blank=True)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_disabled = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = 'activity_logs'
+
+    def __str__(self):
+        return f"{self.get_activity_type_display()} on {self.created_at}"
 
