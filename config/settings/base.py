@@ -92,6 +92,7 @@ LOCAL_APPS = [
     "app_cunsole.users.apps.UsersConfig",
     "app_cunsole.customer.apps.CustomerConfig",
     "app_cunsole.invoices.apps.InvoicesConfig",
+   
     # Your stuff: custom apps go here
 ]
 

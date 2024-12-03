@@ -1,10 +1,13 @@
-import uuid
-from django.db import models
-
-
+from django.conf import settings
 
 import uuid
 from django.db import models
+
+
+
+import uuid
+from django.db import models
+
 
 
 class Account(models.Model):
@@ -367,3 +370,16 @@ class ActivityLog(models.Model):
     def __str__(self):
         return f"{self.get_activity_type_display()} on {self.created_at}"
 
+
+
+
+class AIInteraction(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    account = models.ForeignKey("Account", on_delete=models.CASCADE)
+    query = models.TextField()
+    response = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'ai_interactions'
+        ordering = ['-created_at']

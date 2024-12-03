@@ -21,7 +21,6 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from app_cunsole.customer.models import Account
-from app_cunsole.users.models import User
 from .models import User
 from .serializers import AccountSerializer
 from .serializers import CustomTokenObtainPairSerializer
@@ -44,18 +43,14 @@ from .utils import verify_dns_records, verify_dmarc_record, send_test_email
 from .models import EmailConfiguration
 from .utils import verify_spf_record
 
-from .models import User
 
 from typing import Optional
 from django.db.models import QuerySet
-from django.contrib.auth import get_user_model
 
 from typing import Optional
 from django.db.models import QuerySet
-from django.contrib.auth.models import User
 
 
-User = get_user_model()
 
 
 
@@ -64,7 +59,6 @@ SECRET_KEY = "django-insecure-3t!a&dtryebf_9n(zhm&b#%(!nqc67hisav6hy02faz_ztb=_$
 
 from django.contrib.auth import get_user_model
 
-User = get_user_model()
 
 class UserDetailView(LoginRequiredMixin, DetailView):
     model = User
@@ -78,8 +72,8 @@ user_detail_view = UserDetailView.as_view()
 from typing import TYPE_CHECKING, Optional
 from django.db.models import QuerySet
 
-if TYPE_CHECKING:
-    from .models import User  # Import only for type checking
+# if TYPE_CHECKING:
+#     from .models import User  # Import only for type checking
 
 from .models import User
 
@@ -97,7 +91,6 @@ class UserUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     def get_object(self, queryset: QuerySet | None = None) -> User:
         assert self.request.user.is_authenticated  # type guard
         return self.request.user
-
 
 
 
@@ -787,7 +780,6 @@ from .utils import add_domain_to_ses, get_verification_status, generate_dns_reco
 
 
 import logging
-from django.contrib.auth.models import User
 from .models import Account, Domainconfig, DNSRecord
 from .utils import add_domain_to_ses, generate_dns_records
 from rest_framework.decorators import api_view
@@ -1844,3 +1836,256 @@ def reset_password(request, uidb64, token):
     except Exception as e:
         logger.error(f"Error in reset_password: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
+    
+
+
+
+
+from .services.ai_response_service import generate_ai_response
+
+
+
+
+# Now you can use `generate_ai_response` as if it were directly imported
+
+
+# def ai_assistant_view(request):
+#     if request.method != 'POST':
+#         return JsonResponse({'error': 'Only POST requests allowed.'}, status=405)
+
+#     user = request.user
+#     account = user.account
+#     user_query = request.POST.get('query')
+
+#     if not user_query:
+#         return JsonResponse({'error': 'No query provided.'}, status=400)
+
+#     response = generate_ai_response(user, account, user_query)
+#     return JsonResponse({'response': response})
+
+
+
+
+
+from django.apps import apps
+from celery import shared_task
+from django.core.mail import send_mail
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+import logging
+
+
+# from customer.models import Account
+Account = apps.get_model('customer', 'Account')
+
+
+
+# Configure logger
+logger = logging.getLogger(__name__)
+
+
+
+
+# @shared_task
+# def generate_ai_response_task(account_id, user_query):
+#     """
+#     Asynchronously generate an AI response for a user's query.
+    
+#     This task processes the user's query and generates an AI response based on the provided account data.
+#     It is designed to run in the background using Celery.
+#     """
+#     try:
+#         # Fetch the necessary models
+#         User = apps.get_model('users', 'User')
+#         # Account = apps.get_model('customer', 'Account')
+        
+#         user = User.objects.filter(account_id=account_id).first()
+#         account = Account.objects.filter(id=user.account.id).first()
+
+#         if user and account:
+#             # Your AI response logic here
+#             response = f"Generated AI response for query: {user_query}"  # Placeholder for actual AI logic
+#             return response
+#         else:
+#             logger.error(f"User or account not found for account_id {account_id}")
+#             return None
+#     except Exception as e:
+#         logger.error(f"Error generating AI response: {str(e)}")
+#         return None
+
+
+
+
+# @api_view(["POST"])
+# def ai_assistant_view(request):
+#     """
+#     Generate an AI response based on the user's query.
+
+#     This view requires that the user is authenticated. It uses the data from the request to generate an AI response.
+#     If no query is provided, it returns a 400 Bad Request error. If the user is not authenticated, it returns a 401 Unauthorized error.
+
+#     Returns:
+#         Response: A JSON response containing the generated AI response.
+#                   If authentication is not provided, returns a 401 Unauthorized error.
+#                   If no query is provided, returns a 400 Bad Request error.
+#     """
+#     try:
+#         if request.user_is_authenticated:
+#             user = request.user_id
+#             account = request.user_account
+#             user_query = request.data.get('query')
+
+#             if not user_query:
+#                 return Response(
+#                     {"error": "No query provided."},
+#                     status=status.HTTP_400_BAD_REQUEST,
+#                 )
+
+#             # Call the Celery task to generate AI response asynchronously
+#             task = generate_ai_response_task.apply_async((account.id, user_query))
+
+#             # Optionally, you can return the task ID or status here if needed
+#             return Response(
+#                 {"response": "AI response is being generated.", "task_id": task.id},
+#                 status=status.HTTP_202_ACCEPTED,
+#             )
+
+#         return Response(
+#             {"error": "Authentication required"},
+#             status=status.HTTP_401_UNAUTHORIZED,
+#         )
+
+#     except Exception as e:
+#         logger.error(f"Error in ai_assistant_view: {str(e)}")
+#         return Response(
+#             {"error": str(e)},
+#             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#         )
+
+
+
+
+from django.apps import apps
+from django.core.mail import send_mail
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+import logging
+
+# from customer.models import Account
+Account = apps.get_model('customer', 'Account')
+
+# Configure logger
+logger = logging.getLogger(__name__)
+    
+
+# @api_view(["POST"])
+# def ai_assistant_view(request):
+#     """
+#     Generate an AI response based on the user's query.
+
+#     This view requires that the user is authenticated. It uses the data from the request to generate an AI response.
+#     If no query is provided, it returns a 400 Bad Request error. If the user is not authenticated, it returns a 401 Unauthorized error.
+
+#     Returns:
+#         Response: A JSON response containing the generated AI response.
+#                   If authentication is not provided, returns a 401 Unauthorized error.
+#                   If no query is provided, returns a 400 Bad Request error.
+#     """
+#     try:
+#         if request.user_is_authenticated:
+#             user = request.user_id
+#             account = request.user_account
+#             user_query = request.data.get('query')
+
+#             if not user_query:
+#                 return Response(
+#                     {"error": "No query provided."},
+#                     status=status.HTTP_400_BAD_REQUEST,
+#                 )
+
+#             # Generate AI response synchronously
+#             response = generate_ai_response(account.id, user_query)
+
+#             return Response(
+#                 {"response": response},
+#                 status=status.HTTP_200_OK,
+#             )
+
+#         return Response(
+#             {"error": "Authentication required"},
+#             status=status.HTTP_401_UNAUTHORIZED,
+#         )
+
+#     except Exception as e:
+#         logger.error(f"Error in ai_assistant_view: {str(e)}")
+#         return Response(
+#             {"error": str(e)},
+#             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#         )
+    
+
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+import re
+import logging
+
+logger = logging.getLogger(__name__)
+
+def strip_markdown(response_text):
+    """
+    Remove Markdown syntax (like ** for bold text) from a string.
+    """
+    return re.sub(r"\*\*", "", response_text)
+
+@api_view(["POST"])
+def ai_assistant_view(request):
+    """
+    Generate an AI response based on the user's query.
+
+    This view requires that the user is authenticated. It processes the user's query and generates an AI response.
+    If no query is provided, it returns a 400 Bad Request error.
+    If the user is not authenticated, it returns a 401 Unauthorized error.
+    """
+    try:
+        # Check if user is authenticated
+        if not getattr(request, "user_is_authenticated", False):
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        user_id = request.user_id
+        user_account = request.user_account
+        user_query = request.data.get("query")
+
+        # Check if a query is provided
+        if not user_query:
+            return Response(
+                {"error": "No query provided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Generate AI response synchronously
+        ai_response = generate_ai_response(user_account.id, user_query)
+
+        # Optional: Remove Markdown formatting from the response
+        response = strip_markdown(ai_response)
+
+        return Response(
+            # {"response": plain_response},
+            # status=status.HTTP_200_OK,
+                  {"response": ai_response},
+#                 status=status.HTTP_200_OK,
+        )
+
+    except Exception as e:
+        # Log the error
+        logger.error(f"Error in ai_assistant_view: {str(e)}")
+        return Response(
+            {"error": "An unexpected error occurred. Please try again later."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
