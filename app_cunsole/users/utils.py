@@ -15,9 +15,22 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend
 from django.utils import timezone
-from .models import SendingStats, EmailConfiguration
+# from .models import SendingStats, EmailConfiguration
 from django.core.exceptions import ObjectDoesNotExist
 import dns.resolver
+
+
+import boto3
+from botocore.exceptions import ClientError
+from django.conf import settings
+# from .models import Domainconfig, DNSRecord
+
+from django.apps import apps
+SendingStats = apps.get_model('users', 'SendingStats')
+EmailConfiguration = apps.get_model('users', 'EmailConfiguration')
+Domainconfig = apps.get_model('users', 'Domainconfig')
+DNSRecord = apps.get_model('users', 'DNSRecord')
+
 
 def verify_spf_record(email_configuration):
     """Verify the SPF record for the given email configuration."""
@@ -306,10 +319,7 @@ def send_test_email(email_configuration):
 
 
 
-import boto3
-from botocore.exceptions import ClientError
-from django.conf import settings
-from .models import Domainconfig, DNSRecord
+
 
 def create_ses_client():
     return boto3.client('ses', 
