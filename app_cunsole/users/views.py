@@ -229,31 +229,6 @@ def signin(request):
     )
 
 
-# previous with the pages routing which cause errors
-# class CustomTokenObtainPairView(TokenObtainPairView):
-#     serializer_class = CustomTokenObtainPairSerializer
-
-#     def post(self, request, *args, **kwargs):
-#         serializer = self.get_serializer(data=request.data)
-#         try:
-#             serializer.is_valid(raise_exception=True)
-#         except serializers.ValidationError as e:
-#             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-
-#         response = Response(serializer.validated_data, status=status.HTTP_200_OK)
-#         response.set_cookie(
-#             key=settings.SIMPLE_JWT["AUTH_COOKIE"],
-#             value=serializer.validated_data["access"],
-#             expires=settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"],
-#             secure=settings.SIMPLE_JWT.get("AUTH_COOKIE_SECURE", False),
-#         )
-#         response.set_cookie(
-#             key=settings.SIMPLE_JWT["REFRESH_COOKIE"],
-#             value=serializer.validated_data["refresh"],
-#             expires=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
-#             secure=settings.SIMPLE_JWT.get("AUTH_COOKIE_SECURE", False),
-#         )
-#         return response
     
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -983,30 +958,6 @@ def get_account_domains(request):
 
 
 
-# from rest_framework.decorators import api_view
-# from rest_framework.response import Response
-# from .utils import generate_email
-
-# from rest_framework import status
-
-
-# @api_view(['POST'])
-# def generate_email_view(request):
-#     try:
-#         data = request.data
-#         email_text = generate_email(
-#             subject=data.get('subject'),
-#             customer_name=data.get('customer_name'),
-#             due_date=data.get('due_date'),
-#             invoice_amount=data.get('invoice_amount')
-#         )
-#         return Response({"email_text": email_text}, status=status.HTTP_200_OK)
-#     except Exception as e:
-#         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-
-
-
 
 
 from rest_framework.decorators import api_view
@@ -1185,45 +1136,6 @@ def check_email_status(request, task_id):
 
 
 
-# without authentication
-# @api_view(['POST'])
-# def send_custom_email(request):
-#     """
-#     Send a custom email with user-defined content.
-#     """
-#     try:
-#         # Extract email data from request
-#         subject = request.data.get('subject')
-#         message = request.data.get('message')
-#         recipient_list = request.data.get('recipient_list')
-#         cc_list = request.data.get('cc', [])  # Optional CC field
-
-#         # Validate required fields
-#         if not subject or not message or not recipient_list:
-#             raise ValidationError("Subject, message, and recipient_list are required.")
-
-#         # Prepare email data
-#         email_data = {
-#             'subject': subject,
-#             'message': message,
-#             'recipient_list': recipient_list,
-#             'cc_list': cc_list,
-#         }
-
-#         # Trigger Celery task to send the email
-#         task = send_test_emails.delay(email_data)
-
-#         return Response({
-#             'status': 'success',
-#             'task_id': task.id,
-#             'message': 'Your custom email is being sent.'
-#         })
-
-#     except ValidationError as e:
-#         return Response({'status': 'error', 'message': str(e)}, status=400)
-
-
-
 
 # previous logic without activity logs for sending manual email
 @api_view(['POST'])
@@ -1279,270 +1191,6 @@ def send_custom_email(request):
         return Response({'status': 'error', 'message': str(e)}, status=400)
 
 
-
-# from django.forms.models import model_to_dict
-# from rest_framework.decorators import api_view
-# from rest_framework.response import Response
-# from rest_framework import status
-# from rest_framework.exceptions import ValidationError
-# from .tasks import send_test_emails
-# import logging
-# from django.apps import apps
-# from typing import Dict, Any, List
-# from celery.result import AsyncResult
-
-# # Get models dynamically
-# ActivityLog = apps.get_model('customer', 'ActivityLog')
-# User = apps.get_model('users', 'User')
-
-# # Configure logging
-# logger = logging.getLogger(__name__)
-
-# def validate_email_data(data: Dict[str, Any]) -> None:
-#     """Validate email data and raise ValidationError if invalid."""
-#     required_fields = {
-#         'subject': 'Email subject is required',
-#         'message': 'Email message is required',
-#         'recipient_list': 'At least one recipient is required'
-#     }
-    
-#     for field, error_message in required_fields.items():
-#         if not data.get(field):
-#             raise ValidationError({field: error_message})
-    
-#     if not isinstance(data.get('recipient_list', []), list):
-#         raise ValidationError({'recipient_list': 'Recipient list must be an array'})
-    
-#     if 'cc_list' in data and not isinstance(data['cc_list'], list):
-#         raise ValidationError({'cc_list': 'CC list must be an array'})
-
-# def create_activity_log(
-#     account: Any,
-#     user: Any,
-#     email_data: Dict[str, Any],
-#     status_message: str
-# ) -> ActivityLog:
-#     """Create an activity log entry for the email operation."""
-#     email_fields = {
-#         'subject': email_data['subject'],
-#         'message': email_data['message'],
-#         'recipient_list': email_data['recipient_list'],
-#         'cc_list': email_data.get('cc_list', [])
-#     }
-    
-#     description = "Email Details:\n" + \
-#                   "\n".join([f"{key}: {value}" for key, value in email_fields.items()])
-    
-#     return ActivityLog.objects.create(
-#         account=account,
-#         user=user,
-#         activity_type=4,  # Email Activity Type
-#         description=description,
-#         email_subject=email_data['subject'],
-#         email_description=email_data['message'],
-#         email_from=user.email,
-#         email_to=email_data['recipient_list'],
-#         email_cc=email_data.get('cc_list', []),
-#         email_bcc=None,
-#         email_status=status_message
-#     )
-
-# @api_view(['POST'])
-# def send_custom_email(request) -> Response:
-#     """
-#     Send a custom email with user-defined content and log the activity.
-    
-#     Returns:
-#         Response object with appropriate status code and message
-#     """
-#     try:
-#         # Authentication check
-#         if not request.user.is_authenticated:
-#             logger.warning("Unauthenticated email send attempt")
-#             return Response(
-#                 {
-#                     "status": "error",
-#                     "code": "authentication_required",
-#                     "message": "User is not authenticated"
-#                 },
-#                 status=status.HTTP_401_UNAUTHORIZED
-#             )
-
-#         user = request.user
-#         account = getattr(user, 'account', None)
-        
-#         if not account:
-#             logger.error(f"User {user.id} has no associated account")
-#             return Response(
-#                 {
-#                     "status": "error",
-#                     "code": "account_required",
-#                     "message": "User does not have an associated account"
-#                 },
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-#         # Extract and validate email data
-#         email_data = {
-#             'subject': request.data.get('subject'),
-#             'message': request.data.get('message'),
-#             'recipient_list': request.data.get('recipient_list', []),
-#             'cc_list': request.data.get('cc', [])
-#         }
-        
-#         validate_email_data(email_data)
-
-#         # Create initial activity log
-#         activity_log = create_activity_log(
-#             account=account,
-#             user=user,
-#             email_data=email_data,
-#             status_message="Preparing to send"
-#         )
-
-#         # Trigger Celery task
-#         task = send_test_emails.delay(email_data)
-        
-#         # Update activity log with task ID
-#         activity_log.task_id = task.id
-#         activity_log.save()
-        
-#         logger.info(f"Email task {task.id} triggered for user {user.id}")
-
-#         return Response({
-#             'status': 'success',
-#             'task_id': task.id,
-#             'message': 'Email is being processed',
-#             'activity_log_id': activity_log.id
-#         }, status=status.HTTP_202_ACCEPTED)
-
-#     except ValidationError as e:
-#         error_detail = str(e.detail) if hasattr(e, 'detail') else str(e)
-#         logger.warning(f"Email validation error: {error_detail}")
-#         return Response({
-#             'status': 'error',
-#             'code': 'validation_error',
-#             'message': 'Invalid email data provided',
-#             'details': error_detail
-#         }, status=status.HTTP_400_BAD_REQUEST)
-        
-#     except Exception as e:
-#         logger.error(f"Unexpected error in send_custom_email: {str(e)}", exc_info=True)
-#         return Response({
-#             'status': 'error',
-#             'code': 'internal_error',
-#             'message': 'An unexpected error occurred while processing your request',
-#             'request_id': request.META.get('X-Request-ID', 'unknown')
-#         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# @api_view(['GET'])
-# def check_email_status(request, task_id: str) -> Response:
-#     """
-#     Check the status of an email sending task.
-#     """
-#     try:
-#         task_result = AsyncResult(task_id)
-        
-#         if task_result.ready():
-#             if task_result.successful():
-#                 return Response({
-#                     'status': 'success',
-#                     'code': 'email_sent',
-#                     'message': 'Email was sent successfully'
-#                 })
-#             else:
-#                 error = str(task_result.result)
-#                 logger.error(f"Email task {task_id} failed: {error}")
-#                 return Response({
-#                     'status': 'error',
-#                     'code': 'email_failed',
-#                     'message': 'Email sending failed',
-#                     'error': error
-#                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-#         return Response({
-#             'status': 'pending',
-#             'code': 'processing',
-#             'message': 'Email is still being processed'
-#         })
-        
-#     except Exception as e:
-#         logger.error(f"Error checking email status: {str(e)}", exc_info=True)
-#         return Response({
-#             'status': 'error',
-#             'code': 'status_check_failed',
-#             'message': 'Failed to check email status'
-#         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# @api_view(['POST'])
-# def generate_triggr_by_ai(request):
-#     try:
-#         # Extract input data
-#         data = request.data
-
-#         # Required fields: tone, style, length, include_greeting, include_salutation
-#         required_fields = ['tone', 'style', 'length', 'include_greeting', 'include_salutation']
-#         missing_fields = [field for field in required_fields if field not in data]
-
-#         if missing_fields:
-#             return Response(
-#                 {"error": f"Missing required fields: {', '.join(missing_fields)}"},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-#         # Optional fields: customer_name, invoice_details, due_date
-#         customer_name = data.get('customer_name', 'Valued Customer')
-#         invoice_details = data.get('invoice_details', 'Invoice Details Not Provided')
-#         due_date = data.get('due_date', 'Due Date Not Provided')
-
-#         # Validate optional due date if provided
-#         if 'due_date' in data:
-#             try:
-#                 due_date = datetime.datetime.strptime(data['due_date'], '%Y-%m-%d').date()
-#             except ValueError:
-#                 return Response(
-#                     {"error": "Invalid date format. Please use YYYY-MM-DD"},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#         # Convert include_greeting and include_salutation to boolean
-#         include_greeting = data.get('include_greeting', 'true') == 'true'
-#         include_salutation = data.get('include_salutation', 'true') == 'true'
-
-#         # Instantiate AzureOpenAIService and generate the email
-#         service = AzureOpenAIService()
-#         email_response = service.generate_trigger_email(
-#             customer_name=customer_name,
-#             invoice_details=invoice_details,
-#             due_date=due_date,
-#             tone=data['tone'],
-#             style=data['style'],
-#             length=data['length'],
-#             include_greeting=include_greeting,
-#             include_salutation=include_salutation
-#         )
-
-#         # Return the generated email content
-#         if email_response['status'] == 'success':
-#             return Response({
-#                 "status": "success",
-#                 "subject": email_response['subject'],
-#                 "body": email_response['body']
-#             }, status=status.HTTP_200_OK)
-#         else:
-#             return Response({
-#                 "status": "error",
-#                 "message": email_response['message']
-#             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-#     except Exception as e:
-#         return Response({
-#             "status": "error",
-#             "message": "An error occurred while generating the email",
-#             "detail": str(e)
-#         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
 
 
 @api_view(['POST'])
@@ -1655,73 +1303,6 @@ def sessiondetails(request):
 
 
 
-# from django.contrib.auth.tokens import default_token_generator
-# from django.core.mail import send_mail
-# from django.http import JsonResponse
-# from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-# from django.utils.encoding import force_bytes, force_str
-# from django.views.decorators.http import require_POST
-# from django.contrib.auth import get_user_model
-# from django.template.loader import render_to_string
-# from rest_framework.decorators import api_view
-# import logging
-
-# logger = logging.getLogger(__name__)
-# User = get_user_model()
-
-
-# @api_view(['POST'])
-# @require_POST
-# def request_password_reset(request):
-#     try:
-#         email = request.data.get('email')
-#         user = User.objects.filter(email=email).first()
-
-#         if user is not None:
-#             # Generate a password reset token
-#             token = default_token_generator.make_token(user)
-#             uid = urlsafe_base64_encode(force_bytes(user.pk))
-
-#             # Create reset URL
-#             reset_url = request.build_absolute_uri(f'/reset-password/{uid}/{token}/')
-
-#             subject = "Password Reset Requested"
-#             message = render_to_string('password_reset_email.html', {
-#                 'user': user,  # Pass the user object to the template
-#                 'reset_url': reset_url,
-#             })
-
-#             # Send email
-#             send_mail(subject, message, 'no-reply@cunsole.com', [email])
-
-#         return JsonResponse({'message': 'If an account with that email exists, a password reset link has been sent.'}, status=200)
-    
-#     except Exception as e:
-#         logger.error(f"Error in request_password_reset: {str(e)}")
-#         return JsonResponse({'error': str(e)}, status=500)
-
-
-
-# @api_view(['POST'])
-# def reset_password(request, uidb64, token):
-#     try:
-#         uid = force_str(urlsafe_base64_decode(uidb64))
-#         user = User.objects.get(pk=uid)
-
-#         if user is not None and default_token_generator.check_token(user, token):
-#             new_password = request.data.get('password')
-#             user.set_password(new_password)
-#             user.save()
-#             return JsonResponse({'message': 'Password has been reset successfully.'}, status=200)
-
-#         return JsonResponse({'error': 'Invalid token or user ID.'}, status=400)
-
-#     except Exception as e:
-#         logger.error(f"Error in reset_password: {str(e)}")
-#         return JsonResponse({'error': str(e)}, status=500)
-    
-
-
 
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
@@ -1737,40 +1318,6 @@ import logging
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
-
-# @api_view(['POST'])
-# @require_POST
-# def request_password_reset(request):
-#     try:
-#         email = request.data.get('email')
-#         user = User.objects.filter(email=email).first()
-
-#         if user is None:
-#             return JsonResponse({'message': 'If an account with that email exists, a password reset link has been sent. Please check your email.'}, status=200)
-#         elif not user.is_active:
-#             return JsonResponse({'error': 'The user account is disabled. Please contact support for assistance.'}, status=400)
-#         else:
-#             # Generate a password reset token
-#             token = default_token_generator.make_token(user)
-#             uid = urlsafe_base64_encode(force_bytes(user.pk))
-
-#             # Create reset URL
-#             reset_url = request.build_absolute_uri(f'/reset-password/{uid}/{token}/')
-
-#             subject = "Password Reset Requested"
-#             message = render_to_string('password_reset_email.html', {
-#                 'user': user,  # Pass the user object to the template
-#                 'reset_url': reset_url,
-#             })
-
-#             # Send email
-#             send_mail(subject, message, 'no-reply@cunsole.com', [email])
-
-#             return JsonResponse({'message': 'If an account with that email exists, a password reset link has been sent. Please check your email.'}, status=200)
-    
-#     except Exception as e:
-#         logger.error(f"Error in request_password_reset: {str(e)}")
-#         return JsonResponse({'error': str(e)}, status=500)
 
 
 @api_view(['POST'])
@@ -1841,27 +1388,10 @@ def reset_password(request, uidb64, token):
 
 
 
-from .services.ai_response_service import generate_ai_response
+from .services.ai_response_service import generate_ai_response, calculate_customer_credit_score, batch_calculate_customer_credit_scores
 
 
 
-
-# Now you can use `generate_ai_response` as if it were directly imported
-
-
-# def ai_assistant_view(request):
-#     if request.method != 'POST':
-#         return JsonResponse({'error': 'Only POST requests allowed.'}, status=405)
-
-#     user = request.user
-#     account = user.account
-#     user_query = request.POST.get('query')
-
-#     if not user_query:
-#         return JsonResponse({'error': 'No query provided.'}, status=400)
-
-#     response = generate_ai_response(user, account, user_query)
-#     return JsonResponse({'response': response})
 
 
 
@@ -1885,83 +1415,6 @@ Account = apps.get_model('customer', 'Account')
 logger = logging.getLogger(__name__)
 
 
-
-
-# @shared_task
-# def generate_ai_response_task(account_id, user_query):
-#     """
-#     Asynchronously generate an AI response for a user's query.
-    
-#     This task processes the user's query and generates an AI response based on the provided account data.
-#     It is designed to run in the background using Celery.
-#     """
-#     try:
-#         # Fetch the necessary models
-#         User = apps.get_model('users', 'User')
-#         # Account = apps.get_model('customer', 'Account')
-        
-#         user = User.objects.filter(account_id=account_id).first()
-#         account = Account.objects.filter(id=user.account.id).first()
-
-#         if user and account:
-#             # Your AI response logic here
-#             response = f"Generated AI response for query: {user_query}"  # Placeholder for actual AI logic
-#             return response
-#         else:
-#             logger.error(f"User or account not found for account_id {account_id}")
-#             return None
-#     except Exception as e:
-#         logger.error(f"Error generating AI response: {str(e)}")
-#         return None
-
-
-
-
-# @api_view(["POST"])
-# def ai_assistant_view(request):
-#     """
-#     Generate an AI response based on the user's query.
-
-#     This view requires that the user is authenticated. It uses the data from the request to generate an AI response.
-#     If no query is provided, it returns a 400 Bad Request error. If the user is not authenticated, it returns a 401 Unauthorized error.
-
-#     Returns:
-#         Response: A JSON response containing the generated AI response.
-#                   If authentication is not provided, returns a 401 Unauthorized error.
-#                   If no query is provided, returns a 400 Bad Request error.
-#     """
-#     try:
-#         if request.user_is_authenticated:
-#             user = request.user_id
-#             account = request.user_account
-#             user_query = request.data.get('query')
-
-#             if not user_query:
-#                 return Response(
-#                     {"error": "No query provided."},
-#                     status=status.HTTP_400_BAD_REQUEST,
-#                 )
-
-#             # Call the Celery task to generate AI response asynchronously
-#             task = generate_ai_response_task.apply_async((account.id, user_query))
-
-#             # Optionally, you can return the task ID or status here if needed
-#             return Response(
-#                 {"response": "AI response is being generated.", "task_id": task.id},
-#                 status=status.HTTP_202_ACCEPTED,
-#             )
-
-#         return Response(
-#             {"error": "Authentication required"},
-#             status=status.HTTP_401_UNAUTHORIZED,
-#         )
-
-#     except Exception as e:
-#         logger.error(f"Error in ai_assistant_view: {str(e)}")
-#         return Response(
-#             {"error": str(e)},
-#             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#         )
 
 
 
@@ -2089,3 +1542,25 @@ def ai_assistant_view(request):
             {"error": "An unexpected error occurred. Please try again later."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+from django.apps import apps
+
+
+Customer = apps.get_model('customer', 'Customers')  # Assuming 'customer' is the name of your app where the Customers model is located
+
+from uuid import UUID
+
+
+
+def calculate_credit_score(request, customer_id):
+
+    customer = get_object_or_404(Customer, id=customer_id)
+    credit_score_data = calculate_customer_credit_score(customer)
+    return JsonResponse(credit_score_data)
+
+
+def batch_calculate_credit_scores(request):
+    customers = Customer.objects.filter(isactive=True)  # Corrected model reference
+    credit_scores = batch_calculate_customer_credit_scores(customers)
+    return JsonResponse(credit_scores, safe=False)
