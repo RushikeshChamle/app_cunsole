@@ -1,14 +1,3 @@
-# import dns.resolver
-# from cryptography.hazmat.primitives import serialization
-# from cryptography.hazmat.primitives.asymmetric import rsa
-# from django.utils import timezone
-# from .models import SendingStats, EmailConfiguration
-# from cryptography.hazmat.primitives.asymmetric import rsa
-# from cryptography.hazmat.backends import default_backend
-
-
-# from django.core.exceptions import ObjectDoesNotExist
-# import dns.resolver
 
 import dns.resolver
 from cryptography.hazmat.primitives import serialization
@@ -51,12 +40,7 @@ def verify_spf_record(email_configuration):
     except Exception as e:
         return f'Error: {str(e)}'
 
-# Update the existing verify_dns_records function in utils.py
-# def verify_dns_records(email_configuration):
-#     results = {}
-#     # ... existing DKIM verification ...
-#     results['spf'] = verify_spf_record(email_configuration)
-#     return results
+
 
 def verify_dns_records(email_configuration):
     results = {}
@@ -128,51 +112,6 @@ def generate_dkim_keys():
 
 
 
-# def verify_dns_records(email_configuration):
-#     """
-#     Verify the DKIM and SPF DNS records for the given email configuration.
-#     Args:
-#         email_configuration (object): The email configuration containing domain details.
-#     Returns:
-#         results (dict): A dictionary with DKIM and SPF validation status.
-#     """
-#     results = {}
-
-#     # Verify DKIM record
-#     dkim_record = email_configuration.generate_dkim_record()
-#     try:
-
-#         # Query the DNS for the DKIM record using the domain and selector
-#         answers = dns.resolver.resolve(f"{email_configuration.dkim_selector}._domainkey.{email_configuration.domain_name}", 'TXT')
-
-#         # Check if the expected DKIM record is in the DNS response
-#         if any(dkim_record in str(rdata) for rdata in answers):
-#             results['dkim'] = 'Valid'
-#         else:
-#             results['dkim'] = 'Invalid'
-#     except dns.resolver.NXDOMAIN:
-
-#         # DKIM record not found in DNS
-#         results['dkim'] = 'Not found'
-
-#     # Verify SPF record
-#     try:
-
-#         # Query the DNS for TXT records of the domain
-#         answers = dns.resolver.resolve(email_configuration.domain_name, 'TXT')
-
-#         # Look for the SPF record that starts with 'v=spf1
-#         spf_record = next((str(rdata) for rdata in answers if str(rdata).startswith('v=spf1')), None)
-#         if spf_record:
-#             results['spf'] = 'Valid'
-#         else:
-#             results['spf'] = 'Not found'
-#     except dns.resolver.NXDOMAIN:
-
-#         # SPF record not found in DNS
-#         results['spf'] = 'Not found'
-
-#     return results
 
 
 def verify_dns_records(email_configuration):
@@ -406,43 +345,10 @@ def generate_dns_records(domain, dkim_tokens, mail_from_domain):
     return records
 
 
-# from openai import OpenAI
-# from django.conf import settings
-
-# # Initialize the OpenAI client
-# client = OpenAI(api_key=settings.OPENAI_API_KEY)
-
-# import logging
-
-# def generate_email(subject, customer_name, due_date, invoice_amount):
-#     prompt = f"""
-#     Create a professional and polite payment reminder email.
-#     - Subject: {subject}
-#     - Customer Name: {customer_name}
-#     - Invoice Amount: {invoice_amount}
-#     - Due Date: {due_date}
-#     The tone should be friendly but firm, encouraging timely payment.
-#     """
-#     logging.debug("Generated prompt: %s", prompt)
-
-#     # Using the ChatCompletion method for the gpt-3.5-turbo model
-#     response = client.chat.completions.create(
-#         model="gpt-4o-mini",
-#         messages=[
-#             {"role": "user", "content": prompt}
-#         ],
-#         max_tokens=200,
-#         temperature=0.7,
-#     )
-
-#     if 'choices' not in response or not response['choices']:
-#         raise ValueError("Invalid response from OpenAI API")
-
-#     return response['choices'][0]['message']['content'].strip()
 
 
 
-
+# previous original
 import openai
 from django.conf import settings
 from openai import AzureOpenAI
@@ -455,7 +361,7 @@ class AzureOpenAIService:
             azure_endpoint=settings.AZURE_OPENAI_ENDPOINT
         )
 
-    def generate_response(self, prompt, max_tokens=500):
+    def generate_response(self, prompt, max_tokens=1000):
         try:
             response = self.client.chat.completions.create(
                 model=settings.AZURE_DEPLOYMENT_NAME,
@@ -474,53 +380,10 @@ class AzureOpenAIService:
                 'status': 'error',
                 'message': str(e)
             }
-        
 
-    # def generate_trigger_email(
-    #     self, tone, style, length, include_greeting, include_salutation, 
-    #     placeholders, max_tokens=500
-    # ):
-    #     try:
-    #         # Build the email prompt using the provided parameters
-    #         email_prompt = (
-    #             f"Generate an email for accounts receivable automation:\n"
-    #             f"Tone: {tone}\n"
-    #             f"Style: {style}\n"
-    #             f"Length: {length}\n"
-    #         )
-    #         if include_greeting:
-    #             email_prompt += "Include a greeting.\n"
-    #         if include_salutation:
-    #             email_prompt += "Include a salutation.\n"
 
-    #         # Add placeholders directly to the prompt in the required format
-    #         email_prompt += (
-    #             "Use the following placeholders exactly as provided:\n"
-    #             f"{', '.join(placeholders)}\n"
-    #             "Ensure these placeholders remain in the email as-is.\n"
-    #         )
 
-    #         # Call Azure OpenAI to generate the email
-    #         response = self.client.chat.completions.create(
-    #             model=settings.AZURE_DEPLOYMENT_NAME,
-    #             messages=[{"role": "user", "content": email_prompt}],
-    #             max_tokens=max_tokens,
-    #             temperature=0.7,
-    #         )
 
-    #         # Extract subject and body from the response
-    #         email_content = response.choices[0].message.content.strip()
-    #         subject, body = email_content.split('\n', 1)
-
-    #         # No replacement needed, placeholders remain as-is
-    #         return {
-    #             'status': 'success',
-    #             'subject': subject.strip(),
-    #             'body': body.strip()
-    #         }
-
-    #     except Exception as e:
-    #         return {'status': 'error', 'message': str(e)}
 
     def generate_trigger_email(
         self, tone, style, length, include_greeting, include_salutation, 

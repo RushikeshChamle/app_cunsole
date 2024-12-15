@@ -12,7 +12,7 @@ from .views import user_update_view, get_accounts_and_users, email_provider_list
 from .views import user_update_view, email_configuration_list, email_configuration_detail, email_verification_log_list, email_verification_log_detail
 from . import views
 from .views import generate_dkim_keys
-from .views import add_domain, check_verification_status, get_dns_records
+from .views import add_domain, check_verification_status, get_dns_records, ai_assistant_view
 
 
 app_name = "users"
@@ -81,7 +81,14 @@ urlpatterns = [
 
     path('request-password-reset/', views.request_password_reset, name='request_password_reset'),
     path('reset-password/<str:uidb64>/<str:token>/', views.reset_password, name='reset_password'),
-    path('ai-assistant/', views.ai_assistant_view, name='ai_assistant'),
+    path('ai-assistant/', ai_assistant_view, name='ai_assistant'),
+
+
+    # Credit score calculation
+    path('calculate_credit_score/<uuid:customer_id>/', views.calculate_credit_score, name='calculate_credit_score'),
+    path('batch_calculate_credit_scores/', views.batch_calculate_credit_scores, name='batch_calculate_credit_scores'),
+
+
 
 
 

@@ -21,8 +21,10 @@ def serialize_datetime(obj):
 
 
 
+
+
 # def extract_relevant_context(account):
-#     return {
+#     context = {
 #         "account_details": {
 #             "name": account.name,
 #             "industry": account.industry,
@@ -33,21 +35,53 @@ def serialize_datetime(obj):
 #         "payment_history": get_payment_history(account),
 #         "communication_logs": get_recent_communications(account),
 #     }
+    
+#     # Serialize datetime fields in the context dictionary
+#     return json.loads(json.dumps(context, default=serialize_datetime))
 
 
 
-# def extract_relevant_context(account):
-#     return {
-#         "account_details": {
-#             "name": account.name,
-#             "industry": account.industry,
-#             "credit_limit": float(account.credit_limit),
-#         },
-#         "recent_invoices": get_recent_invoices(account),
-#         "customer_info": get_customer_details(account),  # This will return a list now
-#         "payment_history": get_payment_history(account),
-#         "communication_logs": get_recent_communications(account),
-#     }
+
+# def get_recent_invoices(account, limit=5):
+#     invoices = Invoices.objects.filter(account=account, is_disabled=False).order_by('-created_at')[:limit]
+#     return [{"invoice_id": inv.customid, "total_amount": float(inv.total_amount), "created_at": inv.created_at.isoformat()} for inv in invoices]
+
+
+
+
+
+# def get_customer_details(account):
+#     customers = Customers.objects.filter(account=account)
+#     if customers.exists():
+#         customer_details = []
+#         for customer in customers:
+#             customer_details.append({
+#                 "name": customer.name,
+#                 "category": customer.customer_category
+#             })
+#         return customer_details
+#     else:
+#         return []
+
+
+
+# def get_payment_history(account, limit=10):
+#     payments = Payment.objects.filter(account=account, is_disabled=False).order_by('-payment_date')[:limit]
+#     return [{"amount": float(p.amount), "date": p.payment_date.isoformat()} for p in payments]
+
+
+
+
+# def get_recent_communications(account, limit=5):
+#     logs = CommunicationLog.objects.filter(customer__account=account).order_by('-sent_at')[:limit]
+#     return [{"subject": log.subject, "channel": log.channel, "sent_at": log.sent_at.isoformat()} for log in logs]
+
+
+
+
+# full invoice without limit
+
+
 
 def extract_relevant_context(account):
     context = {
@@ -66,23 +100,17 @@ def extract_relevant_context(account):
     return json.loads(json.dumps(context, default=serialize_datetime))
 
 
-# def get_recent_invoices(account, limit=5):
-#     invoices = Invoices.objects.filter(account=account, is_disabled=False).order_by('-created_at')[:limit]
-#     return [{"invoice_id": inv.customid, "total_amount": float(inv.total_amount)} for inv in invoices]
+def get_recent_invoices(account):
+    invoices = Invoices.objects.filter(account=account, is_disabled=False).order_by('-created_at')
+    return [
+        {
+            "invoice_id": inv.customid, 
+            "total_amount": float(inv.total_amount), 
+            "created_at": inv.created_at.isoformat()
+        }
+        for inv in invoices
+    ]
 
-
-def get_recent_invoices(account, limit=5):
-    invoices = Invoices.objects.filter(account=account, is_disabled=False).order_by('-created_at')[:limit]
-    return [{"invoice_id": inv.customid, "total_amount": float(inv.total_amount), "created_at": inv.created_at.isoformat()} for inv in invoices]
-
-
-
-# def get_customer_details(account):
-#     try:
-#         customer = Customers.objects.get(account=account)
-#         return {"name": customer.name, "category": customer.customer_category}
-#     except Customers.DoesNotExist:
-#         return {}
 
 def get_customer_details(account):
     customers = Customers.objects.filter(account=account)
@@ -98,20 +126,25 @@ def get_customer_details(account):
         return []
 
 
-# def get_payment_history(account, limit=10):
-#     payments = Payment.objects.filter(account=account, is_disabled=False).order_by('-payment_date')[:limit]
-#     return [{"amount": float(p.amount), "date": p.payment_date} for p in payments]
-
-def get_payment_history(account, limit=10):
-    payments = Payment.objects.filter(account=account, is_disabled=False).order_by('-payment_date')[:limit]
-    return [{"amount": float(p.amount), "date": p.payment_date.isoformat()} for p in payments]
-
-
-# def get_recent_communications(account, limit=5):
-#     logs = CommunicationLog.objects.filter(customer__account=account).order_by('-sent_at')[:limit]
-#     return [{"subject": log.subject, "channel": log.channel} for log in logs]
+def get_payment_history(account):
+    payments = Payment.objects.filter(account=account, is_disabled=False).order_by('-payment_date')
+    return [
+        {
+            "amount": float(p.amount), 
+            "date": p.payment_date.isoformat()
+        }
+        for p in payments
+    ]
 
 
-def get_recent_communications(account, limit=5):
-    logs = CommunicationLog.objects.filter(customer__account=account).order_by('-sent_at')[:limit]
-    return [{"subject": log.subject, "channel": log.channel, "sent_at": log.sent_at.isoformat()} for log in logs]
+def get_recent_communications(account):
+    logs = CommunicationLog.objects.filter(customer__account=account).order_by('-sent_at')
+    return [
+        {
+            "subject": log.subject, 
+            "channel": log.channel, 
+            "sent_at": log.sent_at.isoformat()
+        }
+        for log in logs
+    ]
+
