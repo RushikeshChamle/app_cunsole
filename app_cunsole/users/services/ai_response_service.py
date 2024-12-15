@@ -110,6 +110,7 @@ from django.apps import apps
 from django.db.models import Sum, Count
 from django.core.exceptions import ObjectDoesNotExist
 
+
 def calculate_customer_credit_score(customer):
     try:
         # Dynamically import models to avoid circular imports
@@ -173,7 +174,9 @@ def calculate_customer_credit_score(customer):
                 
                 # Outstanding amount calculation
                 if invoice.status != 2:  # Not completed
-                    total_outstanding_amount += total_amount - paid_amount
+                    # total_outstanding_amount += total_amount - paid_amount
+                    total_outstanding_amount = total_invoice_amount - total_paid_amount
+
             except Exception as e:
                 print(f"Error processing invoice {invoice.id}: {e}")
 
@@ -282,7 +285,8 @@ def calculate_customer_credit_score(customer):
             "customer_id": str(customer.id)
         }
     
-    
+  
+
 
 def generate_customer_credit_score_report(customer):
     """
