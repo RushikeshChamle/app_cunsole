@@ -330,6 +330,16 @@ CELERY_TASK_SERIALIZER = 'json'
 # )
 
 
+
+
+EMAIL_BACKEND = env(
+    "DJANGO_EMAIL_BACKEND",
+    default="anymail.backends.amazon_ses.EmailBackend",
+)
+
+
+
+
 EMAIL_BACKEND = "anymail.backends.amazon_ses.EmailBackend"
 ANYMAIL = {
     # "SENDINBLUE_API_KEY": env("SENDINBLUE_API_KEY"),
@@ -344,7 +354,6 @@ ANYMAIL = {
         },
     },
 }
-
 
 
 # SENTRY Configuration

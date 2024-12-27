@@ -3,6 +3,7 @@
 from .base import *  # noqa: F403
 from .base import INSTALLED_APPS
 from .base import env
+import environ
 
 # GENERAL
 # ------------------------------------------------------------------------------
@@ -54,12 +55,18 @@ import os
 
 load_dotenv()
 
-# Azure OpenAI Settings
-AZURE_OPENAI_KEY = "bb427a8734f34842b5439b6b6c1327ea"  # Replace with your full key
-AZURE_OPENAI_ENDPOINT = "https://cunsole.openai.azure.com"
-AZURE_DEPLOYMENT_NAME = "GPT-4o"
-# AZURE_DEPLOYMENT_NAME = "gpt-4o-mini"
-AZURE_API_VERSION = "2024-08-01-preview"
+# # Azure OpenAI Settings
+
+
+# Initialize environment variables
+env = environ.Env()
+environ.Env.read_env()
+
+AZURE_OPENAI_KEY = env('AZURE_OPENAI_KEY')
+AZURE_OPENAI_ENDPOINT = env('AZURE_OPENAI_ENDPOINT')
+AZURE_DEPLOYMENT_NAME = env('AZURE_DEPLOYMENT_NAME', default='GPT-4o')
+AZURE_API_VERSION = env('AZURE_API_VERSION', default='2024-08-01-preview')
+
 
 
 # local redis
