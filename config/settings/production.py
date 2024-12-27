@@ -245,6 +245,11 @@ from .base import DATABASES
 from .base import INSTALLED_APPS
 from .base import SPECTACULAR_SETTINGS
 from .base import env
+import environ
+
+# Initialize environment variables
+env = environ.Env()
+environ.Env.read_env()
 
 # GENERAL
 
@@ -340,20 +345,25 @@ EMAIL_BACKEND = env(
 
 
 
+# Email Backend Settings using Anymail with Amazon SES
 EMAIL_BACKEND = "anymail.backends.amazon_ses.EmailBackend"
 ANYMAIL = {
-    # "SENDINBLUE_API_KEY": env("SENDINBLUE_API_KEY"),
     "AMAZON_SES_CLIENT_PARAMS": {
-        "aws_access_key_id": "AKIA6ODUZKJ7WYST4VRM",
-        "aws_secret_access_key": "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",
-        "region_name": "ap-south-1",
-        # override other default options
+        "aws_access_key_id": env("AMAZON_SES_AWS_ACCESS_KEY_ID"),
+        "aws_secret_access_key": env("AMAZON_SES_AWS_SECRET_ACCESS_KEY"),
+        "region_name": env("AMAZON_SES_REGION_NAME"),
         "config": {
             "connect_timeout": 30,
             "read_timeout": 30,
         },
     },
 }
+
+# AWS Region for SES
+AWS_REGION = env("AMAZON_SES_REGION_NAME")
+AWS_ACCESS_KEY_ID = env("AMAZON_SES_AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = env("AMAZON_SES_AWS_SECRET_ACCESS_KEY")
+
 
 
 # SENTRY Configuration
