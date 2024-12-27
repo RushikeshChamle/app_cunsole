@@ -308,14 +308,13 @@ X_FRAME_OPTIONS = "DENY"
 # EMAIL_TIMEOUT = 5
 
 
+# Email Backend Settings using Anymail with Amazon SES
 EMAIL_BACKEND = "anymail.backends.amazon_ses.EmailBackend"
 ANYMAIL = {
-    # "SENDINBLUE_API_KEY": env("SENDINBLUE_API_KEY"),
     "AMAZON_SES_CLIENT_PARAMS": {
-        "aws_access_key_id": "AKIA6ODUZKJ7WYST4VRM",
-        "aws_secret_access_key": "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",
-        "region_name": "ap-south-1",
-        # override other default options
+        "aws_access_key_id": env('AMAZON_SES_AWS_ACCESS_KEY_ID'),
+        "aws_secret_access_key": env('AMAZON_SES_AWS_SECRET_ACCESS_KEY'),
+        "region_name": env('AMAZON_SES_REGION_NAME'),
         "config": {
             "connect_timeout": 30,
             "read_timeout": 30,
@@ -323,10 +322,10 @@ ANYMAIL = {
     },
 }
 
-
-AWS_REGION = 'ap-south-1'  # Replace with your desired AWS region
-AWS_ACCESS_KEY_ID = 'AKIA6ODUZKJ7WYST4VRM'  # Replace with your AWS access key ID
-AWS_SECRET_ACCESS_KEY = 'PjsH2Ygxm74QJoZ6VAs734OJxvQUFtm7F/SBHNYD'  # Replace with your AWS secret access key
+# AWS Region for SES
+AWS_REGION = env('AMAZON_SES_REGION_NAME')
+AWS_ACCESS_KEY_ID = env('AMAZON_SES_AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = env('AMAZON_SES_AWS_SECRET_ACCESS_KEY')
 
 
 
