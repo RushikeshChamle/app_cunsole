@@ -54,8 +54,7 @@ from django.db.models import QuerySet
 
 
 
-SECRET_KEY = "django-insecure-3t!a&dtryebf_9n(zhm&b#%(!nqc67hisav6hy02faz_ztb=_$"  # Replace with your actual secret key
-
+SECRET_KEY = "django-insecure-3t!a&dtryebf_9n(zhm&b#%(!nqc67hisav6hy02faz_ztb=_$"  
 
 from django.contrib.auth import get_user_model
 
@@ -229,7 +228,8 @@ def signin(request):
     )
 
 
-    
+
+
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -353,10 +353,6 @@ def email_provider_list(request):
 @api_view(['GET', 'PUT', 'DELETE'])
 def email_provider_detail(request, pk):
     """
-
-
-    
-
     """
     provider = get_object_or_404(EmailProvider, pk=pk)
 
@@ -374,7 +370,6 @@ def email_provider_detail(request, pk):
     elif request.method == 'DELETE':
         provider.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
 
 
 
@@ -434,6 +429,7 @@ def email_configuration_detail(request, pk):
         configuration.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
+
 
 
 @api_view(['POST'])
@@ -535,6 +531,7 @@ def email_verification_log_detail(request, pk):
     serializer = EmailVerificationLogSerializer(log)
     # Return the serialized log
     return Response(serializer.data)
+
 
 
 

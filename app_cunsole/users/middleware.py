@@ -25,6 +25,8 @@ def get_user_from_token(request):
             return None
     return None
 
+
+
 class JWTSessionMiddleware(SessionMiddleware):
     def process_request(self, request):
         
@@ -37,8 +39,6 @@ class JWTSessionMiddleware(SessionMiddleware):
         print("Middleware User Authenticated:", request.user_is_authenticated)
         # print("Request User:", request.user_id)
         # print("User Account:", request.user.account)
-
-
         super().process_request(request)
 
     def process_response(self, request, response):

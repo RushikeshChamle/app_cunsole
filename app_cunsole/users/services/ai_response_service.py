@@ -30,8 +30,6 @@ logger = logging.getLogger(__name__)
 
 
 
-
-
 @shared_task
 def generate_ai_response(account_id, user_query):
     """

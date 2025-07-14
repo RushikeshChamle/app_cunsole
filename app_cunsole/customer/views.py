@@ -22,20 +22,14 @@ from django.core.mail import send_mail
 from django.utils import timezone
 from django.http import JsonResponse
 from .models import ActivityLog
-
 from .models import Account
-
 from django.db import transaction
-
 from .models import  EmailTrigger, Customers
 from django.views import View
-
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from .models import EmailTrigger
-
-
 from .serializers import EmailTriggerSerializer
 from django.views.decorators.csrf import csrf_exempt
 
@@ -67,7 +61,6 @@ def create_customer(request):
                     {"error": "User does not have an associated account"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-
             # Deserialize the request data
             data = request.data.copy()
             data['user'] = user
@@ -114,11 +107,6 @@ def get_active_customers_by_account(request):
                     {"error": "User does not have an associated account"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            
-
-
-            
-
             # Fetch active customers based on the account and isactive = True
             customers_list = Customers.objects.filter(account_id=account.id, isactive=True)
 
@@ -128,7 +116,6 @@ def get_active_customers_by_account(request):
                     {"error": "No active customers found for the account"},
                     status=status.HTTP_404_NOT_FOUND,
                 )
-
             # Serialize the customer data
             serializer = CustomerSerializer(customers_list, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)

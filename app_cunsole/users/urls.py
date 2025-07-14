@@ -83,7 +83,7 @@ urlpatterns = [
     path('reset-password/<str:uidb64>/<str:token>/', views.reset_password, name='reset_password'),
     path('ai-assistant/', ai_assistant_view, name='ai_assistant'),
 
-
+    
     # Credit score calculation
     path('calculate_credit_score/<uuid:customer_id>/', views.calculate_credit_score, name='calculate_credit_score'),
     path('batch_calculate_credit_scores/', views.batch_calculate_credit_scores, name='batch_calculate_credit_scores'),

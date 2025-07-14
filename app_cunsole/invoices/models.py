@@ -145,6 +145,7 @@ class Plan(models.Model):
         return self.name
 
 
+
 class PromiseToPay(models.Model):
     invoice = models.ForeignKey(Invoices, on_delete=models.CASCADE)
     date = models.DateField()

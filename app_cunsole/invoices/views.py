@@ -15,7 +15,6 @@ from rest_framework.response import Response
 from django.db.models import Sum
 from django.utils import timezone
 from datetime import timedelta
-
 from rest_framework import status
 from datetime import timedelta
 from django.utils import timezone
@@ -24,12 +23,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Sum
 from .models import Invoices
-
-
-
 import pandas as pd
-
-
 from datetime import timedelta
 from django.utils import timezone
 from rest_framework.decorators import api_view
@@ -54,7 +48,6 @@ from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
 from .models import Invoices
-
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import EmailMessage
@@ -408,54 +401,6 @@ def get_invoices_by_account(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# previous original api  
-# @api_view(["GET"])
-# def get_customer_invoice_summary(request):
-#     try:
-#         # Ensure the user is authenticated
-#         if request.user_is_authenticated:
-#             account = request.user_account
-
-#             if not account:
-#                 return Response(
-#                     {"error": "User does not have an associated account"},
-#                     status=status.HTTP_400_BAD_REQUEST,
-#                 )
-
-#             # Fetch all customers based on the account
-#             customers_list = Customers.objects.filter(account_id=account.id)
-
-#             if not customers_list:
-#                 return Response(
-#                     {"error": "No customers found for the account"},
-#                     status=status.HTTP_404_NOT_FOUND,
-#                 )
-
-#             customer_data = []
-#             for customer in customers_list:
-#                 customer_invoices = Invoices.objects.filter(customerid=customer.id)
-#                 customer_serializer = CustomerinvsummarySerializer(customer)
-#                 customer_data.append(
-#                     {
-#                         "customer": customer_serializer.data,
-#                         "invoices": InvoicedataSerializer(
-#                             customer_invoices,
-#                             many=True,
-#                         ).data,
-#                     },
-#                 )
-
-#             # Return the response
-#             return Response(customer_data, status=status.HTTP_200_OK)
-
-#         return Response(
-#             {"error": "Authentication required"},
-#             status=status.HTTP_401_UNAUTHORIZED,
-#         )
-
-#     except Exception as e:
-#         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 
 from rest_framework.decorators import api_view
@@ -718,98 +663,6 @@ def get_customer_summary(request, customer_id):
 
 
 
-
-# previus logic without ActivityLog
-# @api_view(["POST"])
-# def add_payment(request):
-#     """
-#     Create a new payment record and update the related invoice.
-
-#     Returns:
-#         Response: A JSON response with payment and invoice status.
-#     """
-#     try:
-#         if not request.user_is_authenticated:
-#             return Response(
-#                 {"error": "Authentication required"},
-#                 status=status.HTTP_401_UNAUTHORIZED,
-#             )
-
-#         user = request.user_id  # Authenticated user's ID
-#         account = request.user_account  # User's associated account
-
-#         if not account:
-#             return Response(
-#                 {"error": "User does not have an associated account"},
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-
-#         # Deserialize request data
-#         data = request.data.copy()
-#         data['user'] = user
-#         data['account'] = account.id
-
-#         # Retrieve and validate the invoice
-#         invoice_id = data.get('invoice')
-#         try:
-#             invoice = Invoices.objects.get(id=invoice_id)
-#         except Invoices.DoesNotExist:
-#             return Response(
-#                 {"error": "Invoice not found"},
-#                 status=status.HTTP_404_NOT_FOUND,
-#             )
-
-#         # Validate the new payment amount before saving
-#         payment_amount = data.get('amount')
-#         if payment_amount is None or float(payment_amount) <= 0:
-#             return Response(
-#                 {"error": "Invalid payment amount."},
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-
-#         new_paid_amount = invoice.paid_amount + Decimal(payment_amount)
-
-#         # Ensure no overpayment
-#         if new_paid_amount > invoice.total_amount:
-#             return Response(
-#                 {"error": "Payment exceeds the invoice total amount."},
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-
-#         # Initialize the serializer after validation
-#         serializer = PaymentSerializer(data=data)
-#         if not serializer.is_valid():
-#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-#         # Save the payment only after validation
-#         payment = serializer.save()
-
-#         # Update the invoice with the new paid amount and status
-#         invoice.paid_amount = new_paid_amount
-
-#         # Determine the new status of the invoice
-#         if invoice.paid_amount == 0:
-#             invoice.status = 0  # Due
-#         elif invoice.paid_amount < invoice.total_amount:
-#             invoice.status = 1  # Partial
-#         else:
-#             invoice.status = 2  # Completed
-
-#         invoice.save()  # Save the updated invoice
-
-#         return Response(
-#             {
-#                 "success": "Payment created successfully and invoice updated.",
-#                 "payment": serializer.data,
-#                 "invoice_status": invoice.get_status_display(),
-#             },
-#             status=status.HTTP_201_CREATED,
-#         )
-
-#     except Exception as e:
-#         return Response(
-#             {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-#         )
 
 
 from decimal import Decimal
