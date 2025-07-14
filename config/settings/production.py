@@ -12,7 +12,7 @@
 # from .base import SPECTACULAR_SETTINGS
 # from .base import env
 
-# # GENERAL
+# # GENERAL Production 
 
 # # ------------------------------------------------------------------------------
 # # https://docs.djangoproject.com/en/dev/ref/settings/#secret-key
@@ -345,7 +345,10 @@ EMAIL_BACKEND = env(
 
 
 
+<<<<<<< HEAD
 # Email Backend Settings using Anymail with Amazon SES
+=======
+>>>>>>> 68ac0e5 (Your commit message here)
 EMAIL_BACKEND = "anymail.backends.amazon_ses.EmailBackend"
 ANYMAIL = {
     "AMAZON_SES_CLIENT_PARAMS": {
@@ -363,7 +366,6 @@ ANYMAIL = {
 AWS_REGION = env("AMAZON_SES_REGION_NAME")
 AWS_ACCESS_KEY_ID = env("AMAZON_SES_AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = env("AMAZON_SES_AWS_SECRET_ACCESS_KEY")
-
 
 
 # SENTRY Configuration
